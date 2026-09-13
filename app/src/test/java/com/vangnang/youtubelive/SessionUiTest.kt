@@ -50,4 +50,11 @@ class SessionUiTest {
     @Test fun sportCannotBeChangedInsideScorePanel() {
         assertFalse(File("src/main/java/com/vangnang/youtubelive/ScorePanel.kt").readText().contains("Sport.entries"))
     }
+    @Test fun pickleballServeControlsAreOnCameraPanelNotInSettings() {
+        val layout = File("src/main/res/layout/activity_main.xml").readText()
+        for (id in listOf("quick_serve_a1", "quick_serve_a2", "quick_serve_b1", "quick_serve_b2")) {
+            assertTrue(layout.contains("@+id/$id"))
+        }
+        assertFalse(File("src/main/java/com/vangnang/youtubelive/ScorePanel.kt").readText().contains("Pickleball: tay giao bóng"))
+    }
 }

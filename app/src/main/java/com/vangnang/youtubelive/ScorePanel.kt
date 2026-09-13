@@ -102,14 +102,8 @@ class ScorePanel(
         val serving = choices(listOf("Không hiển thị", "Đội A", "Đội B"), initial.serving, servingSection) { value ->
             if (value != current().serving) change { it.copy(serving = value) }
         }
-        val serverRow = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL; servingSection.addView(this) }
-        label("Pickleball: tay giao bóng (đơn dùng tay 1)", serverRow)
-        val server = choices(listOf("Tay giao số 1 · một vạch xanh", "Tay giao số 2 · hai vạch xanh"), initial.serverNumber - 1, serverRow) { value ->
-            if (value + 1 != current().serverNumber) change { it.copy(serverNumber = value + 1) }
-        }
         setsSection.visibility = if (controls.sets) View.VISIBLE else View.GONE
-        servingSection.visibility = if (controls.serving) View.VISIBLE else View.GONE
-        serverRow.visibility = if (controls.serverNumber) View.VISIBLE else View.GONE
+        servingSection.visibility = if (controls.serving && !controls.serverNumber) View.VISIBLE else View.GONE
         val actions = row()
         button("Hoàn tác", actions) { undo() }
         button("Đổi bên A ↔ B", actions) { change { it.swapTeams() } }
@@ -177,7 +171,6 @@ class ScorePanel(
                 if (style.selectedItemPosition != s.boardStyle().ordinal) style.setSelection(s.boardStyle().ordinal)
                 quickControls?.isChecked = s.quickScoreControls
                 if (serving.selectedItemPosition != s.serving) serving.setSelection(s.serving)
-                if (server.selectedItemPosition != s.serverNumber - 1) server.setSelection(s.serverNumber - 1)
                 scoreText.text = "A: ${s.teamA}   ${s.scoreA}  —  ${s.scoreB}   B: ${s.teamB}"
                 setsText.text = "Số set thắng: A ${s.setsA} — ${s.setsB} B"
                 clockText.text = "${s.period} • ${s.clock(SystemClock.elapsedRealtime())}"

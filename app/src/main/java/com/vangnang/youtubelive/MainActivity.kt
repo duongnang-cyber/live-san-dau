@@ -2,6 +2,7 @@ package com.vangnang.youtubelive
 
 import android.Manifest
 import android.app.ActivityManager
+import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
@@ -84,6 +85,10 @@ class MainActivity : AppCompatActivity() {
         binding.quickAMinus.setOnClickListener { quickPoint(0, -1) }
         binding.quickBPlus.setOnClickListener { quickPoint(1, 1) }
         binding.quickBMinus.setOnClickListener { quickPoint(1, -1) }
+        binding.quickServeA1.setOnClickListener { quickServe(1, 1) }
+        binding.quickServeA2.setOnClickListener { quickServe(1, 2) }
+        binding.quickServeB1.setOnClickListener { quickServe(2, 1) }
+        binding.quickServeB2.setOnClickListener { quickServe(2, 2) }
         binding.root.viewTreeObserver.addOnGlobalLayoutListener { refreshQuickScores() }
         binding.scoreEditor.snapshot = { scoreState }
         binding.scoreEditor.onBegin = { rememberScore() }
@@ -415,11 +420,31 @@ class MainActivity : AppCompatActivity() {
         val b = "${s.teamB} · ${s.scoreB}"
         if (binding.quickTeamA.text.toString() != a) binding.quickTeamA.text = a
         if (binding.quickTeamB.text.toString() != b) binding.quickTeamB.text = b
+        binding.quickServeControls.visibility = if (show && s.sport == Sport.PICKLEBALL) View.VISIBLE else View.GONE
+        val activeServe = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.live_green))
+        val idleServe = ColorStateList.valueOf(0xFF274558.toInt())
+        listOf(
+            binding.quickServeA1 to (s.serving == 1 && s.serverNumber == 1),
+            binding.quickServeA2 to (s.serving == 1 && s.serverNumber == 2),
+            binding.quickServeB1 to (s.serving == 2 && s.serverNumber == 1),
+            binding.quickServeB2 to (s.serving == 2 && s.serverNumber == 2)
+        ).forEach { (button, active) ->
+            val tint = if (active) activeServe else idleServe
+            if (button.backgroundTintList != tint) button.backgroundTintList = tint
+        }
     }
     private fun quickPoint(team: Int, delta: Int) {
         if (!sessionEntered || !scoreState.quickScoresAvailable() || replayEngine?.busy == true) return
         rememberScore()
         scoreState = scoreState.changeScore(team, delta)
+        scoreStore.save(scoreState, SystemClock.elapsedRealtime())
+        refreshQuickScores()
+    }
+    private fun quickServe(team: Int, server: Int) {
+        if (!sessionEntered || scoreState.sport != Sport.PICKLEBALL ||
+            !scoreState.quickScoresAvailable() || replayEngine?.busy == true) return
+        rememberScore()
+        scoreState = scoreState.selectPickleballServe(team, server)
         scoreStore.save(scoreState, SystemClock.elapsedRealtime())
         refreshQuickScores()
     }

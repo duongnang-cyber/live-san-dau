@@ -1,16 +1,18 @@
-# Live Sân Đấu — 1.20.0 • Vạch tay giao bóng pickleball
+# Live Sân Đấu — 1.21.0 • Chọn giao bóng ngay trên camera
 
-**Trạng thái: mã nguồn đã cập nhật; chưa có APK 1.20 được biên dịch trong lượt này.**
+**Trạng thái: mã nguồn 1.21 đã chuyển điều khiển tay giao bóng ra bảng điểm nổi trên camera.**
 
 > Bản GitHub Actions dùng khóa debug tạm thời của máy build và không công khai khóa ký cũ. Khi cài APK từ Actions, có thể phải gỡ bản thử nghiệm cũ nếu Android báo chữ ký không khớp.
 
 - Khi đội A hoặc B giao bóng, hàng của đội đó hiện ký hiệu xanh dọc.
 - Tay giao số 1 hiện **một vạch xanh**; tay giao số 2 hiện **hai vạch xanh**.
+- Bốn nút **A · T1, A · T2, B · T1, B · T2** nằm ngay dưới nút cộng/trừ điểm; một lần chạm chọn đồng thời bên giao và tay giao.
+- Chạm lại nút đang sáng xanh để tắt dấu giao bóng.
 - Vạch đi theo đúng đội đang giao và biến mất khi chọn “Không hiển thị”.
 - Áp dụng cho cả bốn mẫu bảng tỉ số pickleball; bóng chuyền vẫn dùng chấm giao bóng cũ.
 - Dòng trạng thái dưới bảng đổi thành `GIAO BÓNG A/B · TAY 1/2`; mục chỉnh sửa ghi rõ số vạch tương ứng.
 - Thêm kiểm thử cho số vạch, vị trí theo đội A/B và trạng thái không giao bóng.
-- Tăng `versionCode` lên 21 và `versionName` lên `1.20.0`.
+- Tăng `versionCode` lên 22 và `versionName` lên `1.21.0`.
 
 ---
 

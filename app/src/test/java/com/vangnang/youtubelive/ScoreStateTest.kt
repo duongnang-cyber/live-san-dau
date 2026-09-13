@@ -32,6 +32,14 @@ class ScoreStateTest {
     }
     @Test fun newVolleyballMatchStartsSetOne() { assertEquals("SET 1", ScoreState(sport = Sport.VOLLEYBALL).resetMatch().period) }
     @Test fun noAutomaticWinOrSideOut() { val s = ScoreState(sport = Sport.PICKLEBALL, scoreA = 10, serving = 1).changeScore(0, 1); assertEquals(11, s.scoreA); assertEquals(0, s.setsA); assertEquals(1, s.serving) }
+    @Test fun pickleballQuickServeSelectsTeamAndHandTogether() {
+        val s = ScoreState(sport = Sport.PICKLEBALL).selectPickleballServe(2, 2)
+        assertEquals(2, s.serving); assertEquals(2, s.serverNumber)
+    }
+    @Test fun tappingActivePickleballServeAgainClearsIndicator() {
+        val s = ScoreState(sport = Sport.PICKLEBALL, serving = 1, serverNumber = 1).selectPickleballServe(1, 1)
+        assertEquals(0, s.serving); assertEquals(1, s.serverNumber)
+    }
     @Test fun tickerStartsAtRightAndMovesLeft() { assertEquals(1080f, tickerX(0, 90, 200f, 1080f), 0.01f); assertEquals(990f, tickerX(1000, 90, 200f, 1080f), 0.01f) }
     @Test fun tickerLoopsAfterEntireTextClears() { assertEquals(1080f, tickerX(13700, 100, 200f, 1080f), 0.01f) }
     @Test fun tickerSpeedIsNotDependentOnFrameCount() { assertEquals(780f, tickerX(2000, 150, 200f, 1080f), 0.01f) }

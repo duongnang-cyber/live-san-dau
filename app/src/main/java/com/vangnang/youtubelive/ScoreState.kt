@@ -40,6 +40,12 @@ data class ScoreState(
     )
     fun changeScore(team: Int, delta: Int) = if (team == 0) copy(scoreA = (scoreA + delta).coerceIn(0, 999)) else copy(scoreB = (scoreB + delta).coerceIn(0, 999))
     fun changeSets(team: Int, delta: Int) = if (team == 0) copy(setsA = (setsA + delta).coerceIn(0, 99)) else copy(setsB = (setsB + delta).coerceIn(0, 99))
+    fun selectPickleballServe(team: Int, server: Int): ScoreState {
+        val selectedTeam = team.coerceIn(1, 2)
+        val selectedServer = server.coerceIn(1, 2)
+        return if (serving == selectedTeam && serverNumber == selectedServer) copy(serving = 0)
+        else copy(serving = selectedTeam, serverNumber = selectedServer)
+    }
     fun showBreak(show: Boolean, now: Long): ScoreState = pause(now).copy(intermission = show, visible = if (show) true else visible)
     fun swapTeams() = copy(teamA = teamB, teamB = teamA, scoreA = scoreB, scoreB = scoreA, setsA = setsB, setsB = setsA, serving = when (serving) { 1 -> 2; 2 -> 1; else -> 0 })
     fun resetMatch() = copy(scoreA = 0, scoreB = 0, setsA = 0, setsB = 0, elapsedMs = 0, runningSince = null, intermission = false, serving = 0, serverNumber = 1, period = if (sport == Sport.FOOTBALL) "HIỆP 1" else "SET 1")

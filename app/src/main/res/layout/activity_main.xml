@@ -206,26 +206,54 @@
 
     <LinearLayout android:id="@+id/quick_scores" android:layout_width="300dp" android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="42dp"
-        android:orientation="horizontal" android:background="#C9071D32" android:padding="3dp" android:visibility="gone">
-        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
-            <TextView android:id="@+id/quick_team_a" android:layout_width="match_parent" android:layout_height="22dp"
-                android:gravity="center" android:textColor="#68E4ED" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
-            <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
-                <com.google.android.material.button.MaterialButton android:id="@+id/quick_a_minus" android:layout_width="48dp" android:layout_height="48dp"
-                    android:minWidth="0dp" android:padding="0dp" android:text="−" android:contentDescription="Đội A trừ một điểm" app:backgroundTint="#274558" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/quick_a_plus" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
-                    android:minWidth="0dp" android:padding="0dp" android:text="A +1" android:contentDescription="Đội A cộng một điểm" app:backgroundTint="#007A8E" />
+        android:orientation="vertical" android:background="#C9071D32" android:padding="3dp" android:visibility="gone">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+                <TextView android:id="@+id/quick_team_a" android:layout_width="match_parent" android:layout_height="22dp"
+                    android:gravity="center" android:textColor="#68E4ED" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
+                    <com.google.android.material.button.MaterialButton android:id="@+id/quick_a_minus" android:layout_width="48dp" android:layout_height="48dp"
+                        android:minWidth="0dp" android:padding="0dp" android:text="−" android:contentDescription="Đội A trừ một điểm" app:backgroundTint="#274558" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/quick_a_plus" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
+                        android:minWidth="0dp" android:padding="0dp" android:text="A +1" android:contentDescription="Đội A cộng một điểm" app:backgroundTint="#007A8E" />
+                </LinearLayout>
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:orientation="vertical">
+                <TextView android:id="@+id/quick_team_b" android:layout_width="match_parent" android:layout_height="22dp"
+                    android:gravity="center" android:textColor="#FFD46B" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
+                    <com.google.android.material.button.MaterialButton android:id="@+id/quick_b_minus" android:layout_width="48dp" android:layout_height="48dp"
+                        android:minWidth="0dp" android:padding="0dp" android:text="−" android:contentDescription="Đội B trừ một điểm" app:backgroundTint="#274558" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/quick_b_plus" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
+                        android:minWidth="0dp" android:padding="0dp" android:text="B +1" android:contentDescription="Đội B cộng một điểm" app:backgroundTint="#946300" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
-        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:orientation="vertical">
-            <TextView android:id="@+id/quick_team_b" android:layout_width="match_parent" android:layout_height="22dp"
-                android:gravity="center" android:textColor="#FFD46B" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
-            <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
-                <com.google.android.material.button.MaterialButton android:id="@+id/quick_b_minus" android:layout_width="48dp" android:layout_height="48dp"
-                    android:minWidth="0dp" android:padding="0dp" android:text="−" android:contentDescription="Đội B trừ một điểm" app:backgroundTint="#274558" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/quick_b_plus" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
-                    android:minWidth="0dp" android:padding="0dp" android:text="B +1" android:contentDescription="Đội B cộng một điểm" app:backgroundTint="#946300" />
-            </LinearLayout>
+        <LinearLayout android:id="@+id/quick_serve_controls" android:layout_width="match_parent" android:layout_height="34dp"
+            android:layout_marginTop="3dp" android:orientation="horizontal" android:visibility="gone">
+            <com.google.android.material.button.MaterialButton android:id="@+id/quick_serve_a1"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+                android:minWidth="0dp" android:minHeight="0dp" android:insetTop="0dp" android:insetBottom="0dp"
+                android:padding="0dp" android:text="A · T1" android:textSize="10sp"
+                android:contentDescription="Đội A giao bóng tay 1" app:backgroundTint="#274558" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/quick_serve_a2"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+                android:layout_marginStart="3dp" android:minWidth="0dp" android:minHeight="0dp"
+                android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
+                android:text="A · T2" android:textSize="10sp"
+                android:contentDescription="Đội A giao bóng tay 2" app:backgroundTint="#274558" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/quick_serve_b1"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+                android:layout_marginStart="3dp" android:minWidth="0dp" android:minHeight="0dp"
+                android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
+                android:text="B · T1" android:textSize="10sp"
+                android:contentDescription="Đội B giao bóng tay 1" app:backgroundTint="#274558" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/quick_serve_b2"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp"
+                android:layout_marginStart="3dp" android:minWidth="0dp" android:minHeight="0dp"
+                android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
+                android:text="B · T2" android:textSize="10sp"
+                android:contentDescription="Đội B giao bóng tay 2" app:backgroundTint="#274558" />
         </LinearLayout>
     </LinearLayout>
 
