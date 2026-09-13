@@ -1,0 +1,30 @@
+THIRD-PARTY SOFTWARE / PHẦN MỀM BÊN THỨ BA
+
+Giữ nguyên quyền tác giả và giấy phép của các tác giả thư viện. Việc dựng lại giao diện không chuyển quyền sở hữu các thư viện sang tác giả ứng dụng.
+
+RootEncoder 2.7.2 (library, encoder, common, rtmp, rtsp, srt, udp)
+Tác giả: pedroSG94 và cộng tác viên. Apache License 2.0.
+https://github.com/pedroSG94/RootEncoder
+
+AndroidX / Android Data Binding; Material Components for Android
+The Android Open Source Project / Google và cộng tác viên. Apache License 2.0.
+https://android.googlesource.com/platform/frameworks/support/
+https://github.com/material-components/material-components-android
+
+Kotlin standard library; kotlinx-coroutines; kotlinx-io; kotlinx-serialization; Ktor; JetBrains annotations
+JetBrains và cộng tác viên. Apache License 2.0, cùng các thông báo bên thứ ba kèm thư viện.
+https://github.com/JetBrains/kotlin
+https://github.com/Kotlin
+https://github.com/ktorio/ktor
+
+Guava listenablefuture; Error Prone annotations
+Google và cộng tác viên. Apache License 2.0.
+https://github.com/google/guava
+https://github.com/google/error-prone
+
+SLF4J API 2.0.17
+QOS.ch Sarl. MIT License, bản đầy đủ trong SLF4J-MIT.txt.
+https://github.com/qos-ch/slf4j/tree/v_2.0.17
+
+Apache-2.0.txt chứa bản đầy đủ Apache License 2.0.
+RUNTIME_NOTICES.txt được tạo từ danh sách thư viện thực tế của bản build, giữ các tệp LICENSE/NOTICE/COPYING tìm thấy trong JAR/AAR. Không coi danh sách này là chứng nhận pháp lý đầy đủ; cần kiểm tra lại nếu thêm hoặc nâng cấp thư viện trước phát hành thương mại.

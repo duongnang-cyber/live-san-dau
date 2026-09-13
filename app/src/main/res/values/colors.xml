@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="brand_action">#006B5F</color>
+    <color name="field_value">#FFE3A3</color>
+    <color name="field_label">#9DDCCD</color>
+    <color name="field_placeholder">#A9B7C7</color>
+    <color name="field_surface">#172534</color>
+    <color name="panel_surface">#101B28</color>
+    <color name="field_disabled">#A8ACB3</color>
+    <color name="live_green">#38E57C</color>
+    <color name="text_secondary">#B8BCC7</color>
+</resources>

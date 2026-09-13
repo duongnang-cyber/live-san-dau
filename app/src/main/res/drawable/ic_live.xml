@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original code-drawn court / scoreboard emblem; no platform logo. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#101B28" android:pathData="M0,0H108V108H0Z" />
+    <path android:fillColor="#006B5F" android:pathData="M18,26H90V82H18Z" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#9DDCCD"
+        android:strokeWidth="3" android:pathData="M25,33H83V75H25ZM54,33V75M63,54A9,9 0,1 0,45 54A9,9 0,1 0,63 54" />
+    <path android:fillColor="#FFE3A3" android:pathData="M29,20H43V26H29ZM65,20H79V26H65Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M29,46H34V61H29ZM74,46H79V61H74Z" />
+</vector>

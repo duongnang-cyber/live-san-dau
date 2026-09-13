@@ -1,0 +1,13 @@
+LIVE SÂN ĐẤU
+
+Ứng dụng camera, bảng điểm và phát trực tiếp thể thao độc lập. Không phải ứng dụng chính thức, không được tài trợ hay xác nhận bởi YouTube, Facebook hoặc bất kỳ đài truyền hình nào. Tên nền tảng chỉ mô tả đích phát tương thích.
+
+Biểu tượng sân đấu và mẫu Contour, bảng nghỉ, khung chữ chạy, đồ họa chuyển cảnh được dựng bằng mã vector riêng trong bản 1.11. Không đóng gói ảnh tham khảo do người dùng gửi, logo đội bóng, nhạc, video mẫu hoặc font tải ngoài. Các mẫu Arena, Minimal, Champion được dựng bằng mã hình học trong ứng dụng.
+
+Chỉ livestream video, âm thanh, trận đấu và nội dung quảng cáo mà bạn có quyền sử dụng/phát sóng. Đổi màu, thêm bảng điểm hoặc phát lại không thay thế quyền sử dụng nội dung.
+
+Chữ vàng nhạt: nội dung đã nhập hoặc lựa chọn hiện tại.
+Chữ xanh nhạt: nhãn và hướng dẫn nhập.
+Chữ xám: ô tạm khóa khi đang phát.
+
+Bản APK này dùng để kiểm thử, chưa phải xác nhận được Google Play phê duyệt. Cần rà soát quyền nội dung, tên/biểu tượng, giấy phép, quyền riêng tư và hồ sơ phát hành trước khi đăng.

@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black">
+
+    <FrameLayout android:id="@+id/video_stage" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:layout_gravity="center" android:visibility="gone">
+    <SurfaceView
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:keepScreenOn="true" />
+    <com.vangnang.youtubelive.CameraZoomView android:id="@+id/camera_zoom"
+        android:layout_width="match_parent" android:layout_height="match_parent" />
+    <com.vangnang.youtubelive.ScoreEditorView android:id="@+id/score_editor"
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        android:visibility="gone" />
+    </FrameLayout>
+
+    <ScrollView
+        android:id="@+id/controls_panel"
+        android:layout_width="320dp"
+        android:layout_height="match_parent"
+        android:layout_marginTop="60dp"
+        android:layout_gravity="end"
+        android:background="#E6101114"
+        android:fillViewport="true" android:visibility="gone">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:id="@+id/session_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cài đặt phiên live"
+            android:textColor="@color/white"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Đang chuẩn bị camera…"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/bitrate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Tốc độ: 0 Mb/s"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton android:id="@+id/sport_settings"
+            android:layout_width="match_parent" android:layout_height="48dp" android:text="Bảng điểm / trận đấu" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/server_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:hint="Server URL"
+            app:boxBackgroundColor="@color/field_surface"
+            app:boxBackgroundMode="filled"
+            app:hintTextColor="@color/field_label"
+            android:textColorHint="@color/field_label">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/server_url"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri"
+                android:singleLine="true"
+                android:textColor="@color/field_value_state"
+                android:textColorHint="@color/field_placeholder"
+                android:textSize="13sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/key_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Stream Key"
+            app:boxBackgroundColor="@color/field_surface"
+            app:boxBackgroundMode="filled"
+            app:endIconMode="password_toggle"
+            app:hintTextColor="@color/field_label"
+            android:textColorHint="@color/field_label">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/stream_key"
+                android:saveEnabled="false"
+                android:importantForAutofill="no"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:singleLine="true"
+                android:textColor="@color/field_value_state"
+                android:textColorHint="@color/field_placeholder"
+                android:textSize="13sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Độ phân giải và FPS" android:textColor="@color/field_label" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <Spinner android:id="@+id/resolution" android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:backgroundTint="@color/white" android:contentDescription="Chọn độ phân giải" />
+            <Spinner android:id="@+id/fps" android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:backgroundTint="@color/white" android:contentDescription="Chọn FPS" />
+        </LinearLayout>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/apply_settings" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="ÁP DỤNG / KIỂM TRA CAMERA" />
+        <TextView android:id="@+id/actual_fps" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Camera: — FPS • Mã hóa: chưa phát" android:textColor="@color/white" android:textSize="13sp" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="Bộ lọc • Thể thao tự nhiên" android:textColor="@color/field_label" />
+        <Spinner android:id="@+id/sports_look" android:layout_width="match_parent" android:layout_height="48dp"
+            android:backgroundTint="@color/white" android:contentDescription="Bộ lọc thể thao: tắt, nhẹ hoặc vừa" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Áp dụng ngay, không cần bấm ÁP DỤNG. Chỉ lọc hình camera, không lọc bảng điểm. Nếu máy nóng hoặc tụt FPS, chọn Tắt. Replay giữ hình đã ghi."
+            android:textColor="@color/text_secondary" android:textSize="11sp" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="14dp" android:text="REPLAY MỘT CHẠM" android:textColor="#F8CD4C"
+            android:textStyle="bold" android:textSize="13sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Thời lượng • tốc độ" android:textColor="@color/field_label" android:textSize="12sp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <Spinner android:id="@+id/replay_duration" android:layout_width="0dp" android:layout_height="46dp"
+                android:layout_weight="1" android:backgroundTint="@color/white" android:contentDescription="Chọn số giây phát lại" />
+            <Spinner android:id="@+id/replay_speed" android:layout_width="0dp" android:layout_height="46dp"
+                android:layout_weight="1" android:backgroundTint="@color/white" android:contentDescription="Chọn tốc độ phát lại" />
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Chuyển cảnh" android:textColor="@color/field_label" android:textSize="12sp" />
+        <Spinner android:id="@+id/replay_transition" android:layout_width="match_parent" android:layout_height="46dp"
+            android:backgroundTint="@color/white" android:contentDescription="Chọn hiệu ứng chuyển cảnh phát lại" />
+        <TextView android:id="@+id/replay_summary" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Bấm REPLAY sẽ chạy ngay theo cấu hình này." android:textColor="@color/text_secondary" android:textSize="11sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/start_stop"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="14dp"
+            android:text="BẮT ĐẦU PHÁT"
+            android:textStyle="bold"
+            app:backgroundTint="@color/brand_action" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/switch_camera"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Camera: sau"
+                android:textColor="@color/white" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/microphone"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Tắt micro"
+                android:textColor="@color/white" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/quality"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Chọn cấu hình rồi bấm ÁP DỤNG."
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/platform_help" android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text="Key không được lưu. Giữ ứng dụng mở khi live."
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout android:id="@+id/quick_scores" android:layout_width="300dp" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="42dp"
+        android:orientation="horizontal" android:background="#C9071D32" android:padding="3dp" android:visibility="gone">
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:id="@+id/quick_team_a" android:layout_width="match_parent" android:layout_height="22dp"
+                android:gravity="center" android:textColor="#68E4ED" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
+                <com.google.android.material.button.MaterialButton android:id="@+id/quick_a_minus" android:layout_width="48dp" android:layout_height="48dp"
+                    android:minWidth="0dp" android:padding="0dp" android:text="−" android:contentDescription="Đội A trừ một điểm" app:backgroundTint="#274558" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/quick_a_plus" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
+                    android:minWidth="0dp" android:padding="0dp" android:text="A +1" android:contentDescription="Đội A cộng một điểm" app:backgroundTint="#007A8E" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:orientation="vertical">
+            <TextView android:id="@+id/quick_team_b" android:layout_width="match_parent" android:layout_height="22dp"
+                android:gravity="center" android:textColor="#FFD46B" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
+                <com.google.android.material.button.MaterialButton android:id="@+id/quick_b_minus" android:layout_width="48dp" android:layout_height="48dp"
+                    android:minWidth="0dp" android:padding="0dp" android:text="−" android:contentDescription="Đội B trừ một điểm" app:backgroundTint="#274558" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/quick_b_plus" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
+                    android:minWidth="0dp" android:padding="0dp" android:text="B +1" android:contentDescription="Đội B cộng một điểm" app:backgroundTint="#946300" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <ImageButton android:id="@+id/menu_toggle" android:layout_width="48dp" android:layout_height="48dp"
+        android:layout_gravity="top|end" android:layout_margin="6dp" android:padding="12dp"
+        android:background="@drawable/compact_button_bg" android:src="@drawable/ic_menu"
+        android:contentDescription="Mở menu: tỉ số, kích thước, cài đặt" android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/replay_quick"
+        android:layout_width="68dp" android:layout_height="48dp" android:minWidth="0dp"
+        android:layout_gravity="top|end" android:layout_marginTop="6dp" android:layout_marginEnd="60dp"
+        android:paddingStart="3dp" android:paddingEnd="3dp" android:text="REPLAY" android:textSize="10sp"
+        android:contentDescription="Phát lại chậm pha bóng vừa diễn ra"
+        app:backgroundTint="#946300" android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/edit_done"
+        android:layout_width="64dp" android:layout_height="48dp" android:minWidth="0dp"
+        android:layout_gravity="top|end" android:layout_margin="6dp" android:text="XONG" android:textSize="11sp"
+        android:paddingStart="4dp" android:paddingEnd="4dp" android:contentDescription="Xong, khóa vị trí và kích thước bảng điểm"
+        app:backgroundTint="#007A8E" android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/quick_live"
+        android:layout_width="80dp" android:layout_height="48dp" android:minWidth="0dp"
+        android:layout_gravity="bottom|end" android:layout_margin="6dp" android:text="LIVE" android:textSize="12sp"
+        android:paddingStart="4dp" android:paddingEnd="4dp" android:contentDescription="Bắt đầu livestream"
+        app:backgroundTint="@color/brand_action" android:visibility="gone" />
+    <TextView android:id="@+id/compact_status" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:maxWidth="240dp" android:singleLine="true" android:ellipsize="end" android:padding="5dp"
+        android:layout_gravity="bottom|start" android:layout_margin="6dp" android:background="#AA071521"
+        android:textColor="#FFFFFF" android:textSize="10sp" android:visibility="gone" />
+
+    <include android:id="@+id/setup_panel" layout="@layout/view_setup" />
+
+</FrameLayout>

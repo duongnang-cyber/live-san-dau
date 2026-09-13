@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#071521" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="20dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="LIVE SÂN ĐẤU" android:textColor="#68E4ED" android:textSize="23sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Chọn môn và nơi phát. Vào camera để xem trước, sẵn sàng rồi bấm LIVE."
+            android:textColor="#AEC4D2" android:textSize="12sp" android:layout_marginTop="3dp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginTop="12dp" android:baselineAligned="false">
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical" android:paddingEnd="16dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="1. CHỌN MÔN" android:textColor="#FFFFFF" android:textStyle="bold" />
+                <com.google.android.material.button.MaterialButtonToggleGroup android:id="@+id/setup_sport"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" app:singleSelection="true" app:selectionRequired="true"
+                    app:checkedButton="@id/setup_football" android:layout_marginTop="6dp">
+                    <com.google.android.material.button.MaterialButton android:id="@+id/setup_football"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent" android:layout_height="48dp" android:text="BÓNG ĐÁ" android:textColor="#FFFFFF" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/setup_volleyball"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent" android:layout_height="48dp" android:text="BÓNG CHUYỀN" android:textColor="#FFFFFF" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/setup_pickleball"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent" android:layout_height="48dp" android:text="PICKLEBALL" android:textColor="#FFFFFF" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="2. CHỌN NƠI PHÁT" android:textColor="#FFFFFF" android:textStyle="bold" />
+                <com.google.android.material.button.MaterialButtonToggleGroup android:id="@+id/setup_destination"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                    android:orientation="vertical"
+                    app:singleSelection="true" app:selectionRequired="true" app:checkedButton="@id/setup_youtube">
+                    <com.google.android.material.button.MaterialButton android:id="@+id/setup_facebook"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent"
+                        android:layout_height="48dp" android:minWidth="0dp" android:paddingStart="2dp"
+                        android:paddingEnd="2dp" android:text="Facebook" android:textAllCaps="false" android:textSize="14sp" android:textColor="#FFFFFF" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/setup_youtube"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent"
+                        android:layout_height="48dp" android:minWidth="0dp" android:paddingStart="2dp"
+                        android:paddingEnd="2dp" android:text="YouTube" android:textAllCaps="false" android:textSize="14sp" android:textColor="#FFFFFF" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/setup_custom"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent"
+                        android:layout_height="48dp" android:minWidth="0dp" android:paddingStart="2dp"
+                        android:paddingEnd="2dp" android:text="URL khác" android:textAllCaps="false" android:textSize="14sp" android:textColor="#FFFFFF" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+        </LinearLayout>
+        <com.google.android.material.button.MaterialButton android:id="@+id/enter_camera"
+            android:layout_width="match_parent" android:layout_height="52dp" android:text="VÀO CAMERA"
+            android:layout_marginTop="12dp" android:textStyle="bold" app:backgroundTint="#008EA8" />
+    </LinearLayout>
+</ScrollView>
