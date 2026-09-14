@@ -17,8 +17,8 @@ android {
         applicationId = "com.vangnang.livecamera"
         minSdk = 23
         targetSdk = 35
-        versionCode = 25
-        versionName = "1.24.0"
+        versionCode = 26
+        versionName = "1.25.0"
     }
 
     buildFeatures {

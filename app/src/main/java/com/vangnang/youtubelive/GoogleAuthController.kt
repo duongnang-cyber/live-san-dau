@@ -8,6 +8,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -26,7 +27,11 @@ class GoogleAuthController(context: Context) {
         val credential = try {
             requestCredential(activity, authorizedAccountsOnly = true)
         } catch (_: NoCredentialException) {
-            requestCredential(activity, authorizedAccountsOnly = false)
+            try {
+                requestCredential(activity, authorizedAccountsOnly = false)
+            } catch (_: NoCredentialException) {
+                requestExplicitGoogleSignIn(activity)
+            }
         }
         require(credential is CustomCredential &&
             credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
@@ -53,6 +58,22 @@ class GoogleAuthController(context: Context) {
             )
             .build()
     ).credential
+
+    /**
+     * An explicit tap on the Google button must still open Google's account picker when
+     * Credential Manager cannot return a saved/authorized account from its bottom sheet.
+     */
+    private suspend fun requestExplicitGoogleSignIn(activity: Activity) =
+        credentialManager.getCredential(
+            context = activity,
+            request = GetCredentialRequest.Builder()
+                .addCredentialOption(
+                    GetSignInWithGoogleOption.Builder(
+                        activity.getString(R.string.default_web_client_id)
+                    ).build()
+                )
+                .build()
+        ).credential
 
     suspend fun signOut() {
         auth.signOut()
