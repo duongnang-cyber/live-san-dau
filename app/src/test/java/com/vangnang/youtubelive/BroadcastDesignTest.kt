@@ -33,6 +33,17 @@ class BroadcastDesignTest {
         val marks = BroadcastDesign.board(demo.copy(sport = Sport.PICKLEBALL, serving = 0), 0)
         assertFalse(marks.filterIsInstance<Mark.Caption>().any { it.value.contains("TAY ") })
     }
+    @Test fun ownerBadgeIsBlankByDefaultButRedPanelRemains() {
+        val marks = BroadcastDesign.tickerFrame("")
+        assertFalse(marks.filterIsInstance<Mark.Caption>().any { it.value == "GIỚI THIỆU" })
+        assertTrue(marks.filterIsInstance<Mark.Panel>().any { it.ink.colors == listOf(0xFFE32636.toInt()) })
+    }
+    @Test fun customBoardColorsChangeTextBorderAndCellBackground() {
+        val custom = OverlayColors(0xFFFFFFFF.toInt(), 0xFFFFC857.toInt(), 0xFF071D32.toInt())
+        val marks = BroadcastDesign.board(demo.copy(boardColors = custom), 0)
+        assertTrue(marks.filterIsInstance<Mark.Caption>().all { it.color == custom.text })
+        assertTrue(marks.filterIsInstance<Mark.Panel>().any { it.stroke == custom.border && it.ink.colors == listOf(custom.background) })
+    }
     @Test fun pickleballServerOneHasOneGreenBarAndServerTwoHasTwo() {
         for (style in BoardStyle.entries) for (server in 1..2) {
             val marks = BroadcastDesign.board(demo.copy(sport = Sport.PICKLEBALL, serving = 1, serverNumber = server).withBoardStyle(style), 0)

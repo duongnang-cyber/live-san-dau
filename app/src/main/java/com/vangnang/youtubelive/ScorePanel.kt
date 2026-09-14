@@ -75,6 +75,20 @@ class ScorePanel(
         val style = choices(BoardStyle.entries.map { it.title }, initial.boardStyle().ordinal) { index ->
             if (current().boardStyle().ordinal != index) change { it.withBoardStyle(BoardStyle.entries[index]) }
         }
+        label("MÀU BẢNG TỈ SỐ", size = 18f)
+        label("Màu chữ")
+        choices(OverlayColor.entries.map { it.title }, overlayColorIndex(initial.boardColors.text)) { index ->
+            change { it.copy(boardColors = it.boardColors.copy(text = OverlayColor.entries[index].argb)) }
+        }
+        label("Màu đường viền")
+        choices(OverlayColor.entries.map { it.title }, overlayColorIndex(initial.boardColors.border)) { index ->
+            change { it.copy(boardColors = it.boardColors.copy(border = OverlayColor.entries[index].argb)) }
+        }
+        label("Màu nền các ô")
+        choices(OverlayColor.entries.map { it.title }, overlayColorIndex(initial.boardColors.background)) { index ->
+            change { it.copy(boardColors = it.boardColors.copy(background = OverlayColor.entries[index].argb)) }
+        }
+        label("Chọn Mặc định theo mẫu để khôi phục màu thiết kế ban đầu.", size = 13f)
         val quickControls = if (controls.sets) toggle("Hiện nút ± điểm trên màn hình", initial.quickScoreControls) { value ->
             change { it.copy(quickScoreControls = value) }
         } else null
@@ -135,14 +149,27 @@ class ScorePanel(
         val tickerOn = toggle("Bật chữ chạy", initial.tickerVisible) { value -> change { it.copy(tickerVisible = value) } }
         val ticker = input("Nội dung (tối đa 500 ký tự)", initial.tickerText, 500)
         ticker.setSingleLine(false); ticker.minLines = 2
-        val tag = input("Nhãn bên trái chữ chạy", initial.tickerLabel, 20)
+        label("Ô đỏ bên trái để trống. Nội dung trong ô này chỉ chủ sở hữu có thể bật từ xa; người dùng không nhập tại đây.", size = 13f)
         label("Tốc độ chữ chạy")
         var speed = initial.tickerSpeed
         choices(listOf("Chậm", "Vừa", "Nhanh"), if (speed < 70) 0 else if (speed < 120) 1 else 2) { speed = listOf(50, 90, 150)[it] }
         button("Cập nhật nội dung chữ chạy") {
             val text = ticker.text.toString().replace(Regex("\\s+"), " ").trim()
-            change { it.copy(tickerText = text, tickerLabel = tag.text.toString().trim().ifBlank { "THÔNG TIN" }, tickerSpeed = speed) }
+            change { it.copy(tickerText = text, tickerSpeed = speed) }
             if (text.isEmpty()) Toast.makeText(activity, "Chữ chạy ẩn vì chưa có nội dung.", Toast.LENGTH_SHORT).show()
+        }
+        label("MÀU CHỮ CHẠY", size = 18f)
+        label("Màu chữ")
+        choices(OverlayColor.entries.map { it.title }, overlayColorIndex(initial.tickerColors.text)) { index ->
+            change { it.copy(tickerColors = it.tickerColors.copy(text = OverlayColor.entries[index].argb)) }
+        }
+        label("Màu đường viền")
+        choices(OverlayColor.entries.map { it.title }, overlayColorIndex(initial.tickerColors.border)) { index ->
+            change { it.copy(tickerColors = it.tickerColors.copy(border = OverlayColor.entries[index].argb)) }
+        }
+        label("Màu nền thanh chạy")
+        choices(OverlayColor.entries.map { it.title }, overlayColorIndex(initial.tickerColors.background)) { index ->
+            change { it.copy(tickerColors = it.tickerColors.copy(background = OverlayColor.entries[index].argb)) }
         }
         button(if (controls.sets) "Trận mới: xóa điểm, set và đồng hồ" else "Trận mới: xóa điểm và đồng hồ") {
             AlertDialog.Builder(activity).setTitle("Bắt đầu trận mới?").setMessage("Xóa tỉ số và đồng hồ. Giữ tên đội, nội dung chữ chạy và cài đặt phát.")
@@ -165,7 +192,6 @@ class ScorePanel(
                 if (lastUiState.period != s.period) period.setText(s.period)
                 if (lastUiState.breakTitle != s.breakTitle) breakTitle.setText(s.breakTitle)
                 if (lastUiState.tickerText != s.tickerText) ticker.setText(s.tickerText)
-                if (lastUiState.tickerLabel != s.tickerLabel) tag.setText(s.tickerLabel)
                 if (lastUiState.elapsedMs != s.elapsedMs && !clockInput.hasFocus()) clockInput.setText(s.clock(SystemClock.elapsedRealtime()))
                 visible.isChecked = s.visible; intermission.isChecked = s.intermission; tickerOn.isChecked = s.tickerVisible
                 if (style.selectedItemPosition != s.boardStyle().ordinal) style.setSelection(s.boardStyle().ordinal)

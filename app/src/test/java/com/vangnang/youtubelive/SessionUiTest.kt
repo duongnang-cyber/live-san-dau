@@ -58,4 +58,30 @@ class SessionUiTest {
         assertFalse(layout.contains("@+id/quick_serve_controls"))
         assertFalse(File("src/main/java/com/vangnang/youtubelive/ScorePanel.kt").readText().contains("Pickleball: tay giao bóng"))
     }
+    @Test fun ownerBadgeCannotBeTypedInScoreSettings() {
+        val code = File("src/main/java/com/vangnang/youtubelive/ScorePanel.kt").readText()
+        assertFalse(code.contains("Nhãn bên trái chữ chạy\", initial.tickerLabel"))
+        assertTrue(code.contains("chỉ chủ sở hữu có thể bật từ xa"))
+    }
+    @Test fun everyVisibleOverlayHasItsOwnLayoutEditorEntry() {
+        val code = File("src/main/java/com/vangnang/youtubelive/MainActivity.kt").readText()
+        assertTrue(code.contains("OverlayTarget.SCOREBOARD"))
+        assertTrue(code.contains("OverlayTarget.TICKER"))
+        assertTrue(code.contains("OverlayTarget.QUICK_CONTROLS"))
+    }
+    @Test fun tickerUsesFullFrameTextureSoItsPlacementIsNotHardCoded() {
+        val filter = File("src/main/java/com/vangnang/youtubelive/ScoreOverlayFilter.kt").readText()
+        val shader = File("src/main/res/raw/score_fragment.glsl").readText()
+        assertTrue(filter.contains("Bitmap.createBitmap(1280, 720"))
+        assertFalse(shader.contains("0.922222"))
+        assertTrue(shader.contains("texture2D(uTicker, topUV)"))
+    }
+    @Test fun remoteOwnerBadgeDefaultsOffAndShipsNoWriteCredential() {
+        val config = File("../remote-branding.json").readText()
+        val client = File("src/main/java/com/vangnang/youtubelive/RemoteBranding.kt").readText()
+        assertTrue(config.contains("\"enabled\": false"))
+        assertTrue(config.contains("\"label\": \"\""))
+        assertTrue(client.contains("raw.githubusercontent.com/duongnang-cyber/live-san-dau/main/remote-branding.json"))
+        assertFalse(client.contains("Authorization"))
+    }
 }

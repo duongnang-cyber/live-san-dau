@@ -48,7 +48,7 @@ class ScoreOverlayFilter(private val snapshot: () -> ScoreState) : BaseFilterRen
         showBoardUniform = GLES20.glGetUniformLocation(program, "uShowBoard")
         showTickerUniform = GLES20.glGetUniformLocation(program, "uShowTicker")
         board = Bitmap.createBitmap(1280, 720, Bitmap.Config.ARGB_8888)
-        ticker = Bitmap.createBitmap(1280, 56, Bitmap.Config.ARGB_8888)
+        ticker = Bitmap.createBitmap(1280, 720, Bitmap.Config.ARGB_8888)
         boardCanvas = Canvas(board!!); tickerCanvas = Canvas(ticker!!)
         GLES20.glGenTextures(2, textures, 0)
         listOf(board!!, ticker!!).forEachIndexed { index, bitmap ->
@@ -74,7 +74,9 @@ class ScoreOverlayFilter(private val snapshot: () -> ScoreState) : BaseFilterRen
             lastSecond = second
             lastBoard = state; boardAt = now
         }
-        val tickerChanged = last?.tickerText != state.tickerText || last?.tickerVisible != state.tickerVisible || last?.tickerLabel != state.tickerLabel || last?.tickerSpeed != state.tickerSpeed
+        val tickerChanged = last?.tickerText != state.tickerText || last?.tickerVisible != state.tickerVisible ||
+            last?.tickerLabel != state.tickerLabel || last?.tickerSpeed != state.tickerSpeed ||
+            last?.tickerPlacement != state.tickerPlacement || last?.tickerColors != state.tickerColors
         if (tickerChanged) tickerStart = now
         if (tickerChanged || (state.tickerVisible && state.tickerText.isNotBlank() && now - tickerAt >= 32)) {
             painter.ticker(tickerCanvas!!, state, now - tickerStart)

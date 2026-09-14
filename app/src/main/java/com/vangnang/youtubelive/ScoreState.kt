@@ -17,14 +17,18 @@ data class ScoreState(
     val breakTitle: String = "NGHỈ GIỮA HIỆP",
     val elapsedMs: Long = 0, val runningSince: Long? = null,
     val tickerVisible: Boolean = false, val tickerText: String = "",
-    val tickerLabel: String = "GIỚI THIỆU", val tickerSpeed: Int = 90,
+    val tickerLabel: String = "", val tickerSpeed: Int = 90,
     val footballPlacement: BoardPlacement? = null,
     val volleyballPlacement: BoardPlacement? = null,
     val pickleballPlacement: BoardPlacement? = null,
     val breakPlacement: BoardPlacement? = null,
+    val tickerPlacement: BoardPlacement? = null,
+    val quickControlsPlacement: BoardPlacement? = null,
     val footballStyle: BoardStyle = BoardStyle.ARENA,
     val volleyballStyle: BoardStyle = BoardStyle.ARENA,
     val pickleballStyle: BoardStyle = BoardStyle.ARENA,
+    val boardColors: OverlayColors = OverlayColors(),
+    val tickerColors: OverlayColors = OverlayColors(),
     val quickScoreControls: Boolean = true
 ) {
     fun elapsed(now: Long): Long = (elapsedMs + (runningSince?.let { (now - it).coerceAtLeast(0) } ?: 0)).coerceIn(0, MAX_CLOCK_MS)

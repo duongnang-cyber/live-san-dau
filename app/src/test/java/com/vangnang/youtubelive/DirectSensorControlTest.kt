@@ -11,8 +11,8 @@ class DirectSensorControlTest {
     @Test fun a06MinimumDurationAloneDoesNotInventAe60() {
         assertNull(chooseCameraMode(listOf(auto30), Quality.FULL_HD, 60))
     }
-    @Test fun manualCapableA06CanTry60WithoutAny120ModeOrCodec() {
-        assertEquals(manual60, chooseCameraMode(listOf(auto30, manual60), Quality.FULL_HD, 60))
+    @Test fun manualCapabilityDoesNotAdvertiseUnverified60() {
+        assertNull(chooseCameraMode(listOf(auto30, manual60), Quality.FULL_HD, 60))
     }
     @Test fun ordinary60PreferredSoAutoExposureIsPreserved() {
         val normal = manual60.copy(manual = false)
@@ -71,9 +71,9 @@ class DirectSensorControlTest {
         assertFalse(slower.allows(60))
         assertEquals(25_000_000L, directExposure(slower, 25_000_000, 100, 40).frameNs)
     }
-    @Test fun fortyModeIsNotReplacedByThirtyOrSixty() {
+    @Test fun unverifiedManualFortyIsNotAdvertised() {
         val forty = auto30.copy(minFps = 40, maxFps = 40, manual = true)
-        assertEquals(forty, chooseCameraMode(listOf(auto30, manual60, forty), Quality.FULL_HD, 40))
+        assertNull(chooseCameraMode(listOf(auto30, manual60, forty), Quality.FULL_HD, 40))
         assertNull(chooseCameraMode(listOf(auto30, manual60), Quality.FULL_HD, 40))
         assertNull(chooseCameraMode(listOf(forty.copy(durationNs = 33_333_333)), Quality.FULL_HD, 40))
     }

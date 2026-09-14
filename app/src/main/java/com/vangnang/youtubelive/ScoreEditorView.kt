@@ -13,7 +13,10 @@ import kotlin.math.hypot
 
 /** Local touch controls only: this view is never passed to the encoder. */
 class ScoreEditorView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
-    var snapshot: () -> ScoreState = { ScoreState() }
+    var snapshot: () -> EditableOverlay = {
+        EditableOverlay(BoardPlacement(32f, 32f, 0.6f), BoardBounds(0f, 0f, 400f, 200f), "Lớp phủ")
+    }
+    var defaultPlacement: () -> BoardPlacement = { BoardPlacement(32f, 32f, 0.6f) }
     var onBegin: () -> Unit = {}
     var onChange: (BoardPlacement) -> Unit = {}
     var onFinish: () -> Unit = {}
@@ -33,18 +36,18 @@ class ScoreEditorView @JvmOverloads constructor(context: Context, attrs: Attribu
             return true
         }
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val s = snapshot()
-            onChange(s.placement().resize(detector.scaleFactor, s.boardBounds()))
+            val overlay = snapshot()
+            onChange(overlay.placement.resize(detector.scaleFactor, overlay.bounds))
             invalidate()
             return true
         }
     })
     init {
         isClickable = true
-        contentDescription = "Chỉnh bảng tỉ số: kéo để di chuyển, kéo góc dưới phải hoặc chụm hai ngón để đổi cỡ."
+        contentDescription = "Chỉnh lớp phủ: kéo để di chuyển, kéo góc dưới phải hoặc chụm hai ngón để đổi cỡ."
     }
     private fun frame(): RectF {
-        val s = snapshot(); val p = s.placement(); val b = s.boardBounds()
+        val overlay = snapshot(); val p = overlay.placement; val b = overlay.bounds
         return RectF(p.x * width / 1280f, p.y * height / 720f,
             (p.x + b.width * p.scale) * width / 1280f, (p.y + b.height * p.scale) * height / 720f)
     }
@@ -57,7 +60,8 @@ class ScoreEditorView @JvmOverloads constructor(context: Context, attrs: Attribu
         canvas.drawCircle(r.right, r.bottom, 13 * density, paint)
         paint.color = Color.BLACK; paint.textSize = 17 * density; paint.textAlign = Paint.Align.CENTER
         canvas.drawText("↔", r.right, r.bottom + 6 * density, paint)
-        val label = "${(snapshot().placement().scale * 100).toInt()}% • Kéo góc vàng đổi cỡ"
+        val overlay = snapshot()
+        val label = "${overlay.title} • ${(overlay.placement.scale * 100).toInt()}% • Kéo góc vàng đổi cỡ"
         paint.textSize = 12 * density; paint.textAlign = Paint.Align.LEFT
         val labelY = if (r.bottom + 35 * density < height - 58 * density) r.bottom + 33 * density else (r.top - 8 * density).coerceAtLeast(20 * density)
         paint.color = 0xDD071D32.toInt()
@@ -67,7 +71,7 @@ class ScoreEditorView @JvmOverloads constructor(context: Context, attrs: Attribu
         paint.color = 0xE6071D32.toInt()
         canvas.drawRect(0f, height - 48 * density, width.toFloat(), height.toFloat(), paint)
         paint.color = Color.WHITE; paint.textSize = 12 * density
-        canvas.drawText("Kéo bảng để di chuyển • Chụm 2 ngón đổi cỡ", 12 * density, height - 18 * density, paint)
+        canvas.drawText("Kéo ${overlay.title.lowercase()} • Chụm 2 ngón đổi cỡ", 12 * density, height - 18 * density, paint)
         resetRect.set(width - 124 * density, height - 45 * density, width - 6 * density, height - 3 * density)
         paint.color = 0xFF007A8E.toInt()
         canvas.drawRoundRect(resetRect, 5 * density, 5 * density, paint)
@@ -78,7 +82,7 @@ class ScoreEditorView @JvmOverloads constructor(context: Context, attrs: Attribu
         if (width == 0 || height == 0) return false
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             if (resetRect.contains(event.x, event.y)) {
-                onBegin(); onChange(snapshot().defaultPlacement()); onFinish(); invalidate(); performClick()
+                onBegin(); onChange(defaultPlacement()); onFinish(); invalidate(); performClick()
                 return true
             }
             val r = frame()
@@ -86,7 +90,7 @@ class ScoreEditorView @JvmOverloads constructor(context: Context, attrs: Attribu
             val hit = RectF(r).apply { inset(-15 * density, -15 * density) }.contains(event.x, event.y)
             if (!corner && !hit) return false
             onBegin(); started = true; mode = if (corner) 2 else 1
-            initial = snapshot().placement(); pointerId = event.getPointerId(0)
+            initial = snapshot().placement; pointerId = event.getPointerId(0)
             startX = event.x * 1280f / width; startY = event.y * 720f / height
             parent.requestDisallowInterceptTouchEvent(true)
         }
@@ -98,7 +102,7 @@ class ScoreEditorView @JvmOverloads constructor(context: Context, attrs: Attribu
                 if (i >= 0) {
                     val dx = event.getX(i) * 1280f / width - startX
                     val dy = event.getY(i) * 720f / height - startY
-                    val b = snapshot().boardBounds()
+                    val b = snapshot().bounds
                     val next = if (mode == 1) initial.move(dx, dy, b) else initial.resizeByDrag(dx, dy, b)
                     onChange(next); invalidate()
                 }
@@ -109,7 +113,7 @@ class ScoreEditorView @JvmOverloads constructor(context: Context, attrs: Attribu
                 if (remaining < event.pointerCount) {
                     pointerId = event.getPointerId(remaining)
                     startX = event.getX(remaining) * 1280f / width; startY = event.getY(remaining) * 720f / height
-                    initial = snapshot().placement(); mode = 1
+                    initial = snapshot().placement; mode = 1
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {

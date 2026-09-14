@@ -61,9 +61,15 @@ class ScorePainter {
     fun ticker(c: Canvas, s: ScoreState, elapsed: Long) {
         c.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         if (!s.tickerVisible || s.tickerText.isBlank()) return
-        render(c, BroadcastDesign.tickerFrame(s.tickerLabel))
-        c.save(); c.clipRect(158f, 6f, 1265f, 51f)
-        paint.shader = null; paint.style = Paint.Style.FILL; paint.color = Color.WHITE
+        val bounds = tickerBounds()
+        val placement = s.tickerPlacementValue()
+        c.save()
+        c.translate(placement.x, placement.y)
+        c.scale(placement.scale, placement.scale)
+        c.translate(-bounds.left, -bounds.top)
+        render(c, BroadcastDesign.tickerFrame(s.tickerLabel, s.tickerColors))
+        c.clipRect(158f, 6f, 1265f, 51f)
+        paint.shader = null; paint.style = Paint.Style.FILL; paint.color = s.tickerColors.text ?: Color.WHITE
         paint.typeface = body; paint.textAlign = Paint.Align.LEFT; paint.textSize = 23f
         val x = 159f + tickerX(elapsed, s.tickerSpeed, paint.measureText(s.tickerText), 1105f)
         c.drawText(s.tickerText, x, 36f, paint)

@@ -12,9 +12,8 @@ void main() {
   if (uShowBoard) board = texture2D(uBoard, topUV);
   // Android Bitmap pixels are premultiplied; do not multiply RGB by alpha twice.
   vec3 color = board.rgb + video.rgb * (1.0 - board.a);
-  if (uShowTicker && topUV.x >= 0.02 && topUV.x <= 0.98 && topUV.y >= 0.90 && topUV.y <= 0.98) {
-    vec2 tickerUV = vec2((topUV.x - 0.02) / 0.96, (topUV.y - 0.90) / 0.08);
-    vec4 ticker = texture2D(uTicker, tickerUV);
+  if (uShowTicker) {
+    vec4 ticker = texture2D(uTicker, topUV);
     color = ticker.rgb + color * (1.0 - ticker.a);
   }
   gl_FragColor = vec4(color, 1.0);

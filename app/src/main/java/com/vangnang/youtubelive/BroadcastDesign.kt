@@ -55,7 +55,7 @@ object BroadcastDesign {
             s.sport == Sport.PICKLEBALL -> pickleballPro(scene, s, now)
             else -> courtPro(scene, s, now)
         }
-        return scene.marks
+        return applyOverlayColors(scene.marks, s.boardColors)
     }
     private fun footballPro(d: Scene, s: ScoreState, now: Long) = with(d) {
         val style = s.boardStyle()
@@ -281,11 +281,17 @@ object BroadcastDesign {
         panel(524, 502, 232, 4, Ink(0xFF9DDCCD.toInt()), 2)
         text("LIVE SÂN ĐẤU", 640, 578, 22, 900, ice, true)
     }.marks
-    fun tickerFrame(label: String): List<Mark> = Scene().apply {
-        panel(0, 4, 1280, 48, Ink(0xF20A1825.toInt()))
-        panel(0, 4, 1280, 2, Ink(0xFF20C4D6.toInt()))
-        panel(10, 11, 132, 34, Ink(0xFFE32636.toInt()), 8)
-        dot(25, 28, 4, white)
-        text(upper(label), 82, 34, 15, 105, white, true, 11)
+    fun tickerFrame(label: String, colors: OverlayColors = OverlayColors()): List<Mark> = Scene().apply {
+        val background = colors.background ?: 0xF20A1825.toInt()
+        val border = colors.border ?: 0xFF20C4D6.toInt()
+        val textColor = colors.text ?: white
+        panel(0, 4, 1280, 48, Ink(background), 0, colors.border)
+        panel(0, 4, 1280, 2, Ink(border))
+        // The red owner badge remains present even while its remotely controlled text is blank.
+        panel(10, 11, 132, 34, Ink(0xFFE32636.toInt()), 8, colors.border)
+        if (label.isNotBlank()) {
+            dot(25, 28, 4, textColor)
+            text(upper(label), 82, 34, 15, 105, textColor, true, 11)
+        }
     }.marks
 }

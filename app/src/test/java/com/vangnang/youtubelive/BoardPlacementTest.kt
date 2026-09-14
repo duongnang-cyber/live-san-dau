@@ -5,7 +5,7 @@ import org.junit.Test
 
 class BoardPlacementTest {
     private val football = ScoreState(visible = true)
-    @Test fun footballStartsAtSixtyPercent() { assertEquals(0.6f, football.placement().scale, 0.001f) }
+    @Test fun footballStartsAtSixtyEightPercent() { assertEquals(0.68f, football.placement().scale, 0.001f) }
     @Test fun defaultFootballUsesUnderFortyPercentOfVideoWidth() {
         assertTrue(football.placement().scale * football.boardBounds().width < 1280 * 0.4f)
     }
@@ -70,6 +70,19 @@ class BoardPlacementTest {
     @Test fun newMatchPreservesLayout() {
         val s = football.withPlacement(BoardPlacement(400f, 200f, 0.4f))
         assertEquals(s.placement(), s.resetMatch().placement())
+    }
+    @Test fun tickerCanMoveAndResizeIndependently() {
+        val state = football.withTickerPlacement(BoardPlacement(120f, 400f, 0.7f))
+        assertEquals(120f, state.tickerPlacementValue().x, 0.001f)
+        assertEquals(400f, state.tickerPlacementValue().y, 0.001f)
+        assertEquals(football.placement(), state.placement())
+    }
+    @Test fun quickControlsDefaultStaysInsideVideo() {
+        val bounds = BoardBounds(0f, 0f, 520f, 120f)
+        val placement = defaultQuickControlsPlacement(bounds)
+        assertTrue(placement.x >= 8f && placement.y >= 8f)
+        assertTrue(placement.x + bounds.width * placement.scale <= 1272f)
+        assertTrue(placement.y + bounds.height * placement.scale <= 712f)
     }
     @Test fun widePhonePreviewIsLetterboxedAndSixteenByNine() { assertEquals(PreviewSize(1280, 720), fitVideoPreview(1600, 720)) }
     @Test fun tallWindowPreviewIsLetterboxedAndSixteenByNine() { assertEquals(PreviewSize(1280, 720), fitVideoPreview(1280, 900)) }

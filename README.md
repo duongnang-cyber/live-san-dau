@@ -1,4 +1,20 @@
-# Live Sân Đấu — 1.22.0 • Điều khiển Pickleball gọn và bảng điểm truyền hình
+# Live Sân Đấu — 1.23.0 • Overlay tùy biến và FPS trung thực
+
+**Trạng thái: nhãn đỏ được điều khiển từ xa, các lớp hiển thị có thể kéo/phóng và bảng màu có thể tùy chỉnh.**
+
+- Nhãn đỏ bên trái chữ chạy mặc định chỉ còn nền đỏ, không hiện chữ bản quyền hay giới thiệu.
+- Chủ sở hữu có thể bật/tắt và đổi nội dung nhãn từ xa bằng `remote-branding.json`; người dùng ứng dụng không có ô nhập hoặc khóa quản trị.
+- Bảng tỉ số, thanh chữ chạy và cụm nút tăng/giảm điểm đều có chế độ kéo, chụm để đổi kích thước và nút đặt lại vị trí.
+- Có bảng màu riêng cho chữ, đường viền và nền/ô của bảng tỉ số và thanh chữ chạy.
+- Danh sách FPS chỉ công bố mức mà Camera2 và bộ mã hóa H.264 cùng hỗ trợ. Đã bỏ đường suy đoán 40/45/50/60 FPS từ khả năng điều khiển cảm biến thủ công vì một số máy chỉ xuất thực tế 30 FPS.
+- Nếu LG V40 hoặc thiết bị khác chỉ công bố 1080p30, ứng dụng sẽ không còn cho chọn nhầm 1080p60; đây là báo cáo đúng giới hạn phần cứng/driver, không phải ép máy tạo khung hình giả.
+- Tăng `versionCode` lên 24 và `versionName` lên `1.23.0`.
+
+Để chủ sở hữu hiện nhãn đỏ, sửa `remote-branding.json` trên nhánh `main`, đặt `enabled` thành `true` và nhập `label` (tối đa 18 ký tự). Ứng dụng kiểm tra lại khoảng mỗi 60 giây. Đặt `enabled` về `false` để chỉ giữ nền đỏ trống.
+
+---
+
+# Lịch sử — 1.22.0 • Điều khiển Pickleball gọn và bảng điểm truyền hình
 
 **Trạng thái: mã nguồn 1.22 đã đưa chọn tay giao bóng vào đúng cụm tăng/giảm điểm và thiết kế lại bảng Pickleball.**
 

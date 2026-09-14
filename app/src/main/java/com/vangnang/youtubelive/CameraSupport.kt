@@ -32,7 +32,7 @@ fun sensorLimits(info: CameraCharacteristics): SensorControlLimits? {
     return SensorControlLimits(exposure.lower, exposure.upper, iso.lower, iso.upper, maxFrame).takeIf { it.valid() }
 }
 
-private fun cameraModes(context: Context, front: Boolean): List<CameraMode> {
+internal fun cameraModes(context: Context, front: Boolean): List<CameraMode> {
     val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     val facing = if (front) CameraCharacteristics.LENS_FACING_FRONT else CameraCharacteristics.LENS_FACING_BACK
     return manager.cameraIdList.flatMap { id ->
@@ -46,15 +46,9 @@ private fun cameraModes(context: Context, front: Boolean): List<CameraMode> {
                 val duration = runCatching { map.getOutputMinFrameDuration(SurfaceTexture::class.java, size) }.getOrDefault(0)
                 ranges.map { CameraMode(id, size.width, size.height, it.lower, it.upper, duration) }
             }
-            val limits = sensorLimits(info)
-            val manual = if (limits == null) emptyList() else regular
-                .distinctBy { Pair(it.width, it.height) }
-                .flatMap { mode ->
-                    FPS_OPTIONS.filter { fps -> fps > 30 && limits.allows(fps) &&
-                        mode.durationNs in 1L..frameDurationNs(fps) }
-                        .map { fps -> mode.copy(minFps = fps, maxFps = fps, manual = true) }
-                }
-            regular + manual
+            // Do not turn MANUAL_SENSOR timing metadata into a claimed FPS mode. Several phones,
+            // including LG V40 variants, accept the request but still deliver only 30 real frames.
+            regular
         }.getOrDefault(emptyList())
     }
 }
@@ -67,11 +61,21 @@ private fun supportsEncoder(codec: MediaCodecInfo, config: StreamConfig): Boolea
         caps.videoCapabilities.bitrateRange.contains(config.bitrate)
 }.getOrDefault(false)
 
+/** Options shown in the UI must be published by Camera2 and the H.264 encoder for this exact size. */
+fun publishedFpsOptions(context: Context, front: Boolean, base: StreamConfig): List<Int> {
+    val modes = cameraModes(context, front).filter { !it.manual && !it.highSpeed }
+    val codecs = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
+    return FPS_OPTIONS.filter { fps ->
+        val config = base.copy(fps = fps)
+        rankedCameraModes(modes, config.quality, fps).isNotEmpty() && codecs.any { supportsEncoder(it, config) }
+    }
+}
+
 fun checkCameraCandidates(context: Context, front: Boolean, config: StreamConfig): List<CameraSupport> {
     config.validate()?.let { throw IllegalArgumentException(it) }
     val modes = cameraProbeModes(cameraModes(context, front), config.quality, config.fps)
     require(modes.isNotEmpty()) { "Camera2 chưa công bố tổ hợp ${config.quality.title}/${config.fps} FPS dùng được cho camera ${if (front) "trước" else "sau"}. " +
-            "Không dùng nguồn 120 FPS. Chế độ trực tiếp cần dải AE phù hợp ${config.fps} FPS hoặc MANUAL_SENSOR cùng thời gian khung phù hợp. Mở ☰ → Chẩn đoán camera để xem chi tiết."
+            "Không suy đoán 60 FPS từ MANUAL_SENSOR và không dùng nguồn 120 FPS. Mở ☰ → Chẩn đoán camera để xem chi tiết."
     }
     require(MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { supportsEncoder(it, config) }) {
         "Bộ mã hóa H.264 Surface chưa công bố ${config.label}. Xem Chẩn đoán camera."
@@ -84,8 +88,8 @@ fun checkCameraSupport(context: Context, front: Boolean, config: StreamConfig): 
 
 /** No credentials, serial numbers or network identifiers. Only model and capabilities. */
 fun cameraDiagnosticReport(context: Context, front: Boolean, config: StreamConfig): String = buildString {
-    appendLine("Live Sân Đấu 1.18 • ${Build.MANUFACTURER} ${Build.MODEL} • Android ${Build.VERSION.RELEASE}")
-    appendLine("AE/manual đều đặt session parameters từ API 28; thử tối đa 8 cấu hình, giữ nguyên FPS đã chọn.")
+    appendLine("Live Sân Đấu 1.23 • ${Build.MANUFACTURER} ${Build.MODEL} • Android ${Build.VERSION.RELEASE}")
+    appendLine("Chỉ liệt kê FPS được Camera2 công bố cho đúng độ phân giải và được H.264 Surface công bố hỗ trợ.")
     appendLine("Đã chọn: ${config.label} • ${if (front) "trước" else "sau"}")
     appendLine("0 ns = không khai báo thời gian khung, KHÔNG đồng nghĩa chỉ 30 FPS.")
     appendLine("Nguồn lớn hơn 16:9 được thu nhỏ về 2K/1080p, không phóng lớn nguồn nhỏ.")
@@ -101,7 +105,7 @@ fun cameraDiagnosticReport(context: Context, front: Boolean, config: StreamConfi
                 appendLine("MANUAL_SENSOR=" + (info.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)?.contains(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR) == true))
                 appendLine("AE modes=" + info.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_MODES)?.joinToString())
                 appendLine("Exposure ns=" + info.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE) + "; ISO=" + info.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE))
-                appendLine("Max frame ns=" + info.get(CameraCharacteristics.SENSOR_INFO_MAX_FRAME_DURATION) + "; có khóa điều khiển thủ công hợp lệ=" + (sensorLimits(info) != null) + " (không bảo đảm FPS)")
+                appendLine("Max frame ns=" + info.get(CameraCharacteristics.SENSOR_INFO_MAX_FRAME_DURATION) + "; MANUAL_SENSOR hợp lệ=" + (sensorLimits(info) != null) + " (chỉ tham khảo, không dùng để công bố FPS)")
             }
             camera.filter { it.width >= 1280 && !it.manual }.groupBy { Triple(it.width, it.height, it.highSpeed) }.forEach { (key, values) ->
                 appendLine("${key.first}×${key.second} ${if (key.third) "HIGH-SPEED" else "thường"} • ${values.first().durationNs} ns • " +

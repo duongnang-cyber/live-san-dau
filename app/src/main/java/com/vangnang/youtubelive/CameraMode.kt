@@ -7,8 +7,7 @@ data class CameraMode(val cameraId: String, val width: Int, val height: Int,
     fun supports(q: Quality, fps: Int): Boolean {
         if (width < q.width || height < q.height || width.toLong() * q.height != height.toLong() * q.width) return false
         if (highSpeed) return false // Never use 120/240 FPS as a workaround for 60.
-        if (manual) return fps in FPS_OPTIONS && fps > 30 && minFps == fps && maxFps == fps &&
-            durationNs > 0 && durationNs <= frameDurationNs(fps)
+        if (manual) return false // Timing controls are not proof that the HAL will deliver this rate.
         return fps in minFps..maxFps && maxFps <= fps &&
             (durationNs <= 0 || 1_000_000_000.0 / durationNs >= fps - 0.5)
     }

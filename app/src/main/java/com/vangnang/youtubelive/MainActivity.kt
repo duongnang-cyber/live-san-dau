@@ -5,6 +5,8 @@ import android.app.ActivityManager
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.view.SurfaceHolder
 import android.view.View
@@ -28,6 +30,7 @@ import com.pedro.library.generic.GenericStream
 import com.pedro.library.util.FpsListener
 import com.vangnang.youtubelive.databinding.ActivityMainBinding
 import java.util.Locale
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -51,11 +54,16 @@ class MainActivity : AppCompatActivity() {
     private var lowFpsSeconds = 0
     private var foreground = false
     private var sessionEntered = false
+    private var editTarget = OverlayTarget.SCOREBOARD
+    private var fpsChoices = listOf(30)
     @Volatile private var scoreState = ScoreState()
     @Volatile private var sportsLook = SportsLook.LIGHT
     private lateinit var scoreStore: ScoreStore
     private val scoreHistory = ArrayDeque<ScoreState>()
     private var scorePanel: ScorePanel? = null
+    private val brandingHandler = Handler(Looper.getMainLooper())
+    private val brandingExecutor = Executors.newSingleThreadExecutor()
+    private var brandingToken = 0
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (sessionEntered && hasPermissions()) prepare() else if (sessionEntered) {
             status("Cần cấp quyền camera và micro.")
@@ -69,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         scoreStore = ScoreStore(getSharedPreferences("score_overlay", MODE_PRIVATE))
-        scoreState = scoreStore.load()
+        scoreState = scoreStore.load().copy(tickerLabel = "")
         sportsLook = SportsLook.fromStored(getSharedPreferences("image_settings", MODE_PRIVATE).getString("sports_look", null))
         spinner(binding.sportsLook, SportsLook.entries.map { it.title })
         binding.sportsLook.setSelection(sportsLook.ordinal)
@@ -90,9 +98,17 @@ class MainActivity : AppCompatActivity() {
         binding.quickServeB1.setOnClickListener { quickServe(2, 1) }
         binding.quickServeB2.setOnClickListener { quickServe(2, 2) }
         binding.root.viewTreeObserver.addOnGlobalLayoutListener { refreshQuickScores() }
-        binding.scoreEditor.snapshot = { scoreState }
+        binding.scoreEditor.snapshot = { editableOverlay(editTarget) }
+        binding.scoreEditor.defaultPlacement = { defaultOverlayPlacement(editTarget) }
         binding.scoreEditor.onBegin = { rememberScore() }
-        binding.scoreEditor.onChange = { scoreState = scoreState.withPlacement(it) }
+        binding.scoreEditor.onChange = { placement ->
+            scoreState = when (editTarget) {
+                OverlayTarget.SCOREBOARD -> scoreState.withPlacement(placement)
+                OverlayTarget.TICKER -> scoreState.withTickerPlacement(placement)
+                OverlayTarget.QUICK_CONTROLS -> scoreState.copy(quickControlsPlacement = placement.constrained(quickControlsBounds()))
+            }
+            if (editTarget == OverlayTarget.QUICK_CONTROLS) applyQuickControlsPlacement()
+        }
         binding.scoreEditor.onFinish = { scoreStore.save(scoreState, SystemClock.elapsedRealtime()) }
         binding.menuToggle.setOnClickListener {
             if (binding.controlsPanel.visibility == View.VISIBLE) binding.controlsPanel.visibility = View.GONE
@@ -122,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         binding.streamKey.isSaveEnabled = false
         spinner(binding.resolution, Quality.entries.map { it.title })
-        spinner(binding.fps, FPS_OPTIONS.map { "$it FPS" })
+        spinner(binding.fps, fpsChoices.map { "$it FPS" })
         spinner(binding.replayDuration, listOf("3 giây", "5 giây", "8 giây"))
         spinner(binding.replaySpeed, listOf("Chậm 0,5×", "Chậm 0,25×"))
         spinner(binding.replayTransition, ReplayTransition.entries.map { it.title })
@@ -133,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         updateReplaySummary(replaySettings)
         binding.resolution.setSelection(1)
         binding.serverUrl.setText(serverFor(destination))
-        binding.resolution.onItemSelectedListener = listener { invalidateConfig() }
+        binding.resolution.onItemSelectedListener = listener { refreshFpsChoices(); invalidateConfig() }
         binding.fps.onItemSelectedListener = listener { invalidateConfig() }
         binding.replayDuration.onItemSelectedListener = listener { saveReplaySettings() }
         binding.replaySpeed.onItemSelectedListener = listener { saveReplaySettings() }
@@ -146,7 +162,11 @@ class MainActivity : AppCompatActivity() {
         binding.applySettings.setOnClickListener { prepare() }
         binding.startStop.setOnClickListener { if (live) confirmStop() else startLive() }
         binding.switchCamera.setOnClickListener {
-            if (!live) prepare(targetFront = !front)
+            if (!live) {
+                val target = !front
+                refreshFpsChoices(target)
+                prepare(targetFront = target)
+            }
         }
         binding.microphone.setOnClickListener { muted = !muted; applyMute() }
         binding.sportSettings.setOnClickListener { showScorePanel() }
@@ -209,7 +229,8 @@ class MainActivity : AppCompatActivity() {
         val qualities = sessionQualities(destination)
         spinner(binding.resolution, qualities.map { it.title })
         binding.resolution.setSelection(qualities.indexOf(config.quality))
-        binding.fps.setSelection(0)
+        refreshFpsChoices(front)
+        binding.fps.setSelection(fpsChoices.indexOf(30).coerceAtLeast(0))
         binding.serverUrl.setText(serverFor(destination))
         binding.streamKey.text?.clear()
         // Undo must not cross into another sport/session after returning to the chooser.
@@ -259,9 +280,11 @@ class MainActivity : AppCompatActivity() {
     private fun showCompactMenu() {
         PopupMenu(this, binding.menuToggle).apply {
             menu.add(0, 1, 0, "${scoreState.sport.title} • Tỉ số / chữ chạy")
-            menu.add(0, 2, 1, "Kéo vị trí / kích thước bảng")
+            menu.add(0, 2, 1, "Kéo / phóng bảng tỉ số")
                 .isEnabled = replayEngine?.busy != true
-            menu.add(0, 3, 2, if (binding.controlsPanel.visibility == View.VISIBLE) "Ẩn cài đặt" else "Cài đặt phát / replay")
+            menu.add(0, 13, 2, "Kéo / phóng chữ chạy").isEnabled = replayEngine?.busy != true
+            menu.add(0, 14, 3, "Kéo / phóng nút thay đổi điểm").isEnabled = scoreState.quickScoresAvailable() && replayEngine?.busy != true
+            menu.add(0, 3, 4, if (binding.controlsPanel.visibility == View.VISIBLE) "Ẩn cài đặt" else "Cài đặt phát / replay")
             menu.add(0, 4, 3, if (muted) "Bật micro" else "Tắt micro")
             menu.add(0, 5, 4, "Đổi camera trước / sau").isEnabled = !live
             menu.add(0, 6, 5, "Chọn lại môn / nơi phát")
@@ -274,10 +297,16 @@ class MainActivity : AppCompatActivity() {
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     1 -> showScorePanel()
-                    2 -> setLayoutEditing(true)
+                    2 -> setLayoutEditing(true, OverlayTarget.SCOREBOARD)
+                    13 -> setLayoutEditing(true, OverlayTarget.TICKER)
+                    14 -> setLayoutEditing(true, OverlayTarget.QUICK_CONTROLS)
                     3 -> binding.controlsPanel.visibility = if (binding.controlsPanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
                     4 -> { muted = !muted; applyMute() }
-                    5 -> if (!live) prepare(targetFront = !front)
+                    5 -> if (!live) {
+                        val target = !front
+                        refreshFpsChoices(target)
+                        prepare(targetFront = target)
+                    }
                     6 -> requestSetup()
                     7 -> if (replayEngine?.busy == true) returnFromReplay() else startReplay()
                     8 -> zoomCamera(1f, reset = true)
@@ -412,7 +441,9 @@ class MainActivity : AppCompatActivity() {
     }
     private fun refreshQuickScores() {
         val s = scoreState
-        val show = sessionEntered && s.quickScoresAvailable() && binding.scoreEditor.visibility != View.VISIBLE &&
+        val editingQuick = binding.scoreEditor.visibility == View.VISIBLE && editTarget == OverlayTarget.QUICK_CONTROLS
+        val show = sessionEntered && s.quickScoresAvailable() &&
+            (binding.scoreEditor.visibility != View.VISIBLE || editingQuick) &&
             binding.controlsPanel.visibility != View.VISIBLE && replayEngine?.busy != true
         val visibility = if (show) View.VISIBLE else View.GONE
         if (binding.quickScores.visibility != visibility) binding.quickScores.visibility = visibility
@@ -434,6 +465,13 @@ class MainActivity : AppCompatActivity() {
             val tint = if (active) activeServe else idleServe
             if (button.backgroundTintList != tint) button.backgroundTintList = tint
         }
+        val quickButtons = listOf(
+            binding.quickAMinus, binding.quickAPlus, binding.quickBMinus, binding.quickBPlus,
+            binding.quickServeA1, binding.quickServeA2, binding.quickServeB1, binding.quickServeB2
+        )
+        quickButtons.forEach { it.isEnabled = !editingQuick }
+        binding.quickScores.alpha = if (editingQuick) 0.72f else 1f
+        if (show) binding.quickScores.post { applyQuickControlsPlacement() }
     }
     private fun quickPoint(team: Int, delta: Int) {
         if (!sessionEntered || !scoreState.quickScoresAvailable() || replayEngine?.busy == true) return
@@ -462,11 +500,43 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Camera này chưa cho phép zoom ở cấu hình hiện tại.", Toast.LENGTH_SHORT).show()
         }
     }
-    private fun setLayoutEditing(editing: Boolean) {
+    private fun quickControlsBounds(): BoardBounds {
+        val stageWidth = binding.videoStage.width.takeIf { it > 0 } ?: 1280
+        val stageHeight = binding.videoStage.height.takeIf { it > 0 } ?: 720
+        val width = binding.quickScores.width.takeIf { it > 0 } ?: (stageWidth * 0.43f).toInt()
+        val height = binding.quickScores.height.takeIf { it > 0 } ?: (stageHeight * 0.18f).toInt()
+        return BoardBounds(0f, 0f, width * 1280f / stageWidth, height * 720f / stageHeight)
+    }
+    private fun editableOverlay(target: OverlayTarget): EditableOverlay = when (target) {
+        OverlayTarget.SCOREBOARD -> EditableOverlay(scoreState.placement(), scoreState.boardBounds(), target.title)
+        OverlayTarget.TICKER -> EditableOverlay(scoreState.tickerPlacementValue(), tickerBounds(), target.title)
+        OverlayTarget.QUICK_CONTROLS -> {
+            val bounds = quickControlsBounds()
+            EditableOverlay((scoreState.quickControlsPlacement ?: defaultQuickControlsPlacement(bounds)).constrained(bounds), bounds, target.title)
+        }
+    }
+    private fun defaultOverlayPlacement(target: OverlayTarget): BoardPlacement = when (target) {
+        OverlayTarget.SCOREBOARD -> scoreState.defaultPlacement()
+        OverlayTarget.TICKER -> defaultTickerPlacement()
+        OverlayTarget.QUICK_CONTROLS -> defaultQuickControlsPlacement(quickControlsBounds())
+    }
+    private fun applyQuickControlsPlacement() {
+        if (binding.videoStage.width <= 0 || binding.videoStage.height <= 0 || binding.quickScores.width <= 0) return
+        val bounds = quickControlsBounds()
+        val placement = (scoreState.quickControlsPlacement ?: defaultQuickControlsPlacement(bounds)).constrained(bounds)
+        binding.quickScores.pivotX = 0f
+        binding.quickScores.pivotY = 0f
+        binding.quickScores.scaleX = placement.scale
+        binding.quickScores.scaleY = placement.scale
+        binding.quickScores.x = binding.videoStage.x + placement.x * binding.videoStage.width / 1280f
+        binding.quickScores.y = binding.videoStage.y + placement.y * binding.videoStage.height / 720f
+    }
+    private fun setLayoutEditing(editing: Boolean, target: OverlayTarget = editTarget) {
         if (editing && replayEngine?.busy == true) return
         if (editing) {
+            editTarget = target
             scorePanel?.dismiss(); scorePanel = null
-            scoreState = scoreState.copy(visible = true)
+            if (target == OverlayTarget.SCOREBOARD) scoreState = scoreState.copy(visible = true)
             binding.controlsPanel.visibility = View.GONE
         } else if (binding.scoreEditor.visibility == View.VISIBLE) {
             scoreStore.save(scoreState, SystemClock.elapsedRealtime())
@@ -482,7 +552,38 @@ class MainActivity : AppCompatActivity() {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = action()
         override fun onNothingSelected(parent: AdapterView<*>?) = Unit
     }
-    private fun selected() = StreamConfig(destination, sessionQualities(destination).getOrElse(binding.resolution.selectedItemPosition) { Quality.HD }, FPS_OPTIONS.getOrElse(binding.fps.selectedItemPosition) { 30 })
+    private fun selected() = StreamConfig(destination, sessionQualities(destination).getOrElse(binding.resolution.selectedItemPosition) { Quality.HD }, fpsChoices.getOrElse(binding.fps.selectedItemPosition) { 30 })
+    private fun refreshFpsChoices(targetFront: Boolean = front) {
+        val quality = sessionQualities(destination).getOrElse(binding.resolution.selectedItemPosition) { Quality.HD }
+        val previous = fpsChoices.getOrElse(binding.fps.selectedItemPosition) { 30 }
+        fpsChoices = runCatching {
+            publishedFpsOptions(this, targetFront, StreamConfig(destination, quality, 30))
+        }.getOrDefault(emptyList()).ifEmpty { listOf(30) }
+        spinner(binding.fps, fpsChoices.map { "$it FPS" })
+        binding.fps.setSelection(fpsChoices.indexOf(previous).takeIf { it >= 0 } ?: fpsChoices.indexOf(30).coerceAtLeast(0))
+    }
+    private fun startRemoteBranding() {
+        val token = ++brandingToken
+        fetchRemoteBranding(token)
+    }
+    private fun fetchRemoteBranding(token: Int) {
+        brandingExecutor.execute {
+            val branding = runCatching { RemoteBrandingClient.fetch() }.getOrNull()
+            runOnUiThread {
+                if (token != brandingToken || isDestroyed) return@runOnUiThread
+                branding?.let {
+                    val label = if (it.enabled) it.label else ""
+                    if (scoreState.tickerLabel != label) scoreState = scoreState.copy(tickerLabel = label)
+                }
+                brandingHandler.postDelayed({ fetchRemoteBranding(token) }, 60_000)
+            }
+        }
+    }
+    private fun stopRemoteBranding() {
+        brandingToken++
+        brandingHandler.removeCallbacksAndMessages(null)
+        if (scoreState.tickerLabel.isNotEmpty()) scoreState = scoreState.copy(tickerLabel = "")
+    }
     private fun serverFor(value: Destination) = getPreferences(MODE_PRIVATE).getString("server_${value.name}", value.defaultUrl).orEmpty()
     private fun hasPermissions() = listOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO).all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
     private fun invalidateConfig() {
@@ -682,11 +783,12 @@ class MainActivity : AppCompatActivity() {
         showFps()
     }
     override fun onResume() {
-        super.onResume(); foreground = true
+        super.onResume(); foreground = true; startRemoteBranding()
         if (sessionEntered && !live && !prepared && hasPermissions()) binding.preview.post { if (foreground && sessionEntered && !prepared) prepare() }
     }
     override fun onPause() {
         foreground = false
+        stopRemoteBranding()
         setLayoutEditing(false)
         scorePanel?.dismiss(); scorePanel = null
         scoreState = scoreState.pause(SystemClock.elapsedRealtime())
@@ -694,5 +796,5 @@ class MainActivity : AppCompatActivity() {
         if (live) Toast.makeText(this, "Đã dừng live vì ứng dụng ra nền. Giữ ứng dụng mở khi phát.", Toast.LENGTH_LONG).show()
         dispose(); super.onPause()
     }
-    override fun onDestroy() { dispose(); super.onDestroy() }
+    override fun onDestroy() { stopRemoteBranding(); brandingExecutor.shutdownNow(); dispose(); super.onDestroy() }
 }

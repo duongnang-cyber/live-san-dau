@@ -18,10 +18,10 @@ class CameraRetryTest {
         val fourK = normal.copy(width = 3840, height = 2160)
         assertEquals(listOf(normal, fourK), cameraProbeModes(listOf(fourK, normal), Quality.FULL_HD, 60))
     }
-    @Test fun manualIsFallbackAfterEveryNormalCamera() {
+    @Test fun unverifiedManualModesAreExcludedFromRetryQueue() {
         val manual = normal.copy(manual = true)
         val other = normal.copy(cameraId = "1")
-        assertEquals(listOf(other, normal, manual), cameraProbeModes(listOf(manual, other, normal), Quality.FULL_HD, 60))
+        assertEquals(listOf(other, normal), cameraProbeModes(listOf(manual, other, normal), Quality.FULL_HD, 60))
     }
     @Test fun queueDoesNotInventSupportOrDownshiftFps() {
         val onlyThirty = normal.copy(minFps = 30, maxFps = 30)

@@ -2,6 +2,10 @@ package com.vangnang.youtubelive
 
 /** Coordinates in the encoded 1280 x 720 design space, independent of screen size. */
 data class BoardBounds(val left: Float, val top: Float, val width: Float, val height: Float)
+enum class OverlayTarget(val title: String) {
+    SCOREBOARD("Bảng tỉ số"), TICKER("Chữ chạy"), QUICK_CONTROLS("Nút thay đổi điểm")
+}
+data class EditableOverlay(val placement: BoardPlacement, val bounds: BoardBounds, val title: String)
 data class BoardPlacement(val x: Float, val y: Float, val scale: Float) {
     fun constrained(bounds: BoardBounds): BoardPlacement {
         val limit = minOf(2f, 1264f / bounds.width, 704f / bounds.height)
@@ -22,8 +26,20 @@ data class BoardPlacement(val x: Float, val y: Float, val scale: Float) {
 fun ScoreState.boardBounds(): BoardBounds = when {
     intermission -> BoardBounds(155f, 178f, 970f, 323f)
     sport == Sport.FOOTBALL -> BoardBounds(38f, 38f, 748f, 123f)
+    sport == Sport.PICKLEBALL -> BoardBounds(39f, 34f, 526f, 187f)
     else -> BoardBounds(39f, 34f, 436f, 231f)
 }
+
+fun tickerBounds() = BoardBounds(0f, 4f, 1280f, 48f)
+fun defaultTickerPlacement() = BoardPlacement(16f, 650f, 0.975f).constrained(tickerBounds())
+fun ScoreState.tickerPlacementValue(): BoardPlacement = (tickerPlacement ?: defaultTickerPlacement()).constrained(tickerBounds())
+fun ScoreState.withTickerPlacement(value: BoardPlacement) = copy(tickerPlacement = value.constrained(tickerBounds()))
+
+fun defaultQuickControlsPlacement(bounds: BoardBounds) = BoardPlacement(
+    (1280f - bounds.width) / 2f,
+    720f - bounds.height - 58f,
+    1f
+).constrained(bounds)
 fun ScoreState.defaultPlacement(): BoardPlacement = when {
     intermission -> BoardPlacement(227.75f, 222.725f, 0.85f)
     sport == Sport.FOOTBALL -> BoardPlacement(32f, 32f, 0.68f)
