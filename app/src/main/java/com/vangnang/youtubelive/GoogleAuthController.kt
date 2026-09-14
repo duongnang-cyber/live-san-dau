@@ -23,6 +23,18 @@ class GoogleAuthController(context: Context) {
     val currentUser: FirebaseUser?
         get() = auth.currentUser
 
+    suspend fun signInEmail(email: String, password: String): FirebaseUser =
+        auth.signInWithEmailAndPassword(email.trim(), password).await().user
+            ?: error("Không nhận được tài khoản Firebase.")
+
+    suspend fun createEmailAccount(email: String, password: String): FirebaseUser =
+        auth.createUserWithEmailAndPassword(email.trim(), password).await().user
+            ?: error("Không tạo được tài khoản Firebase.")
+
+    suspend fun sendPasswordReset(email: String) {
+        auth.sendPasswordResetEmail(email.trim()).await()
+    }
+
     suspend fun signIn(activity: Activity): FirebaseUser {
         val credential = try {
             requestCredential(activity, authorizedAccountsOnly = true)

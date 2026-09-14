@@ -13,8 +13,10 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.Toast
 import android.widget.FrameLayout
+import android.widget.TextView
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
@@ -190,19 +192,22 @@ class MainActivity : AppCompatActivity() {
     private fun configureSetup() {
         binding.setupPanel.enterCamera.setOnClickListener { enterCamera() }
         binding.setupPanel.googleSignIn.setOnClickListener { signInGoogle() }
-        binding.setupPanel.googleSignOut.setOnClickListener { signOutGoogle() }
-        refreshGoogleAccount()
+        binding.setupPanel.emailSignIn.setOnClickListener { showEmailAuthDialog() }
+        binding.setupPanel.googleSignOut.setOnClickListener { signOutAccount() }
+        refreshAccount()
     }
-    private fun refreshGoogleAccount() {
+    private fun refreshAccount() {
         val user = googleAuth.currentUser
         binding.setupPanel.googleAccountStatus.text = when {
-            user == null -> "Chưa đăng nhập Google"
+            user == null -> "Chưa đăng nhập"
             !user.displayName.isNullOrBlank() -> "${user.displayName} • ${user.email.orEmpty()}"
-            else -> user.email ?: "Đã đăng nhập Google"
+            else -> user.email ?: "Đã đăng nhập"
         }
         binding.setupPanel.googleSignIn.visibility = if (user == null) View.VISIBLE else View.GONE
+        binding.setupPanel.emailSignIn.visibility = if (user == null) View.VISIBLE else View.GONE
         binding.setupPanel.googleSignOut.visibility = if (user == null) View.GONE else View.VISIBLE
         binding.setupPanel.googleSignIn.isEnabled = true
+        binding.setupPanel.emailSignIn.isEnabled = true
         binding.setupPanel.googleSignOut.isEnabled = true
     }
     private fun signInGoogle() {
@@ -211,24 +216,106 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             runCatching { googleAuth.signIn(this@MainActivity) }
                 .onSuccess { user ->
-                    refreshGoogleAccount()
+                    refreshAccount()
                     Toast.makeText(this@MainActivity,
                         "Đã đăng nhập ${user.displayName ?: user.email.orEmpty()}", Toast.LENGTH_SHORT).show()
                 }
                 .onFailure { error ->
-                    refreshGoogleAccount()
+                    refreshAccount()
                     val detail = error.message?.take(120).orEmpty()
                     Toast.makeText(this@MainActivity,
                         "Chưa đăng nhập được Google${if (detail.isBlank()) "." else ": $detail"}", Toast.LENGTH_LONG).show()
                 }
         }
     }
-    private fun signOutGoogle() {
+    private fun showEmailAuthDialog() {
+        val content = layoutInflater.inflate(R.layout.dialog_email_auth, null)
+        val email = content.findViewById<EditText>(R.id.auth_email)
+        val password = content.findViewById<EditText>(R.id.auth_password)
+        val reset = content.findViewById<TextView>(R.id.auth_reset_password)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Tài khoản Live Sân Đấu")
+            .setView(content)
+            .setPositiveButton("ĐĂNG NHẬP", null)
+            .setNeutralButton("TẠO TÀI KHOẢN", null)
+            .setNegativeButton("HỦY", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                authenticateEmail(dialog, email, password, create = false)
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                authenticateEmail(dialog, email, password, create = true)
+            }
+            reset.setOnClickListener {
+                val address = email.text.toString().trim()
+                if (!validEmail(address)) {
+                    email.error = "Nhập đúng địa chỉ email"
+                } else {
+                    reset.isEnabled = false
+                    lifecycleScope.launch {
+                        runCatching { googleAuth.sendPasswordReset(address) }
+                            .onSuccess {
+                                Toast.makeText(this@MainActivity,
+                                    "Đã gửi email đặt lại mật khẩu.", Toast.LENGTH_LONG).show()
+                            }
+                            .onFailure { showAuthError("Chưa gửi được email", it) }
+                        reset.isEnabled = true
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+    private fun authenticateEmail(
+        dialog: AlertDialog,
+        emailInput: EditText,
+        passwordInput: EditText,
+        create: Boolean
+    ) {
+        val email = emailInput.text.toString().trim()
+        val password = passwordInput.text.toString()
+        if (!validEmail(email)) {
+            emailInput.error = "Nhập đúng địa chỉ email"
+            return
+        }
+        if (password.length < 6) {
+            passwordInput.error = "Mật khẩu cần ít nhất 6 ký tự"
+            return
+        }
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = false
+        lifecycleScope.launch {
+            val result = runCatching {
+                if (create) googleAuth.createEmailAccount(email, password)
+                else googleAuth.signInEmail(email, password)
+            }
+            result.onSuccess { user ->
+                dialog.dismiss()
+                refreshAccount()
+                Toast.makeText(this@MainActivity,
+                    if (create) "Đã tạo tài khoản ${user.email.orEmpty()}"
+                    else "Đã đăng nhập ${user.email.orEmpty()}", Toast.LENGTH_LONG).show()
+            }.onFailure {
+                showAuthError(if (create) "Chưa tạo được tài khoản" else "Đăng nhập thất bại", it)
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = true
+            }
+        }
+    }
+    private fun validEmail(value: String) =
+        android.util.Patterns.EMAIL_ADDRESS.matcher(value).matches()
+
+    private fun showAuthError(prefix: String, error: Throwable) {
+        val detail = error.message?.take(150).orEmpty()
+        Toast.makeText(this, "$prefix${if (detail.isBlank()) "." else ": $detail"}", Toast.LENGTH_LONG).show()
+    }
+    private fun signOutAccount() {
         binding.setupPanel.googleSignOut.isEnabled = false
         lifecycleScope.launch {
             runCatching { googleAuth.signOut() }
-            refreshGoogleAccount()
-            Toast.makeText(this@MainActivity, "Đã đăng xuất Google.", Toast.LENGTH_SHORT).show()
+            refreshAccount()
+            Toast.makeText(this@MainActivity, "Đã đăng xuất.", Toast.LENGTH_SHORT).show()
         }
     }
     private fun setupSportSelection() = when (binding.setupPanel.setupSport.checkedButtonId) {
@@ -829,7 +916,7 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onResume() {
         super.onResume(); foreground = true; startRemoteBranding()
-        refreshGoogleAccount()
+        refreshAccount()
         if (sessionEntered && !live && !prepared && hasPermissions()) binding.preview.post { if (foreground && sessionEntered && !prepared) prepare() }
     }
     override fun onPause() {

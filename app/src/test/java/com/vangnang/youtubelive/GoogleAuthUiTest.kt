@@ -9,7 +9,10 @@ class GoogleAuthUiTest {
         val xml = File("src/main/res/layout/view_setup.xml").readText()
         val activity = File("src/main/java/com/vangnang/youtubelive/MainActivity.kt").readText()
         assertTrue(xml.contains("google_sign_in"))
+        assertTrue(xml.contains("email_sign_in"))
         assertTrue(xml.contains("google_sign_out"))
+        assertTrue(activity.contains("createEmailAccount"))
+        assertTrue(activity.contains("sendPasswordReset"))
         assertTrue(activity.contains("enterCamera.setOnClickListener"))
     }
 }
