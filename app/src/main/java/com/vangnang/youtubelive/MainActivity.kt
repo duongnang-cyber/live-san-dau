@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.library.generic.GenericStream
@@ -31,6 +32,7 @@ import com.pedro.library.util.FpsListener
 import com.vangnang.youtubelive.databinding.ActivityMainBinding
 import java.util.Locale
 import java.util.concurrent.Executors
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -59,6 +61,7 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var scoreState = ScoreState()
     @Volatile private var sportsLook = SportsLook.LIGHT
     private lateinit var scoreStore: ScoreStore
+    private lateinit var googleAuth: GoogleAuthController
     private val scoreHistory = ArrayDeque<ScoreState>()
     private var scorePanel: ScorePanel? = null
     private val brandingHandler = Handler(Looper.getMainLooper())
@@ -76,6 +79,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        googleAuth = GoogleAuthController(this)
         scoreStore = ScoreStore(getSharedPreferences("score_overlay", MODE_PRIVATE))
         scoreState = scoreStore.load().copy(tickerLabel = "")
         sportsLook = SportsLook.fromStored(getSharedPreferences("image_settings", MODE_PRIVATE).getString("sports_look", null))
@@ -185,6 +189,47 @@ class MainActivity : AppCompatActivity() {
     }
     private fun configureSetup() {
         binding.setupPanel.enterCamera.setOnClickListener { enterCamera() }
+        binding.setupPanel.googleSignIn.setOnClickListener { signInGoogle() }
+        binding.setupPanel.googleSignOut.setOnClickListener { signOutGoogle() }
+        refreshGoogleAccount()
+    }
+    private fun refreshGoogleAccount() {
+        val user = googleAuth.currentUser
+        binding.setupPanel.googleAccountStatus.text = when {
+            user == null -> "Chưa đăng nhập Google"
+            !user.displayName.isNullOrBlank() -> "${user.displayName} • ${user.email.orEmpty()}"
+            else -> user.email ?: "Đã đăng nhập Google"
+        }
+        binding.setupPanel.googleSignIn.visibility = if (user == null) View.VISIBLE else View.GONE
+        binding.setupPanel.googleSignOut.visibility = if (user == null) View.GONE else View.VISIBLE
+        binding.setupPanel.googleSignIn.isEnabled = true
+        binding.setupPanel.googleSignOut.isEnabled = true
+    }
+    private fun signInGoogle() {
+        binding.setupPanel.googleSignIn.isEnabled = false
+        binding.setupPanel.googleAccountStatus.text = "Đang mở tài khoản Google…"
+        lifecycleScope.launch {
+            runCatching { googleAuth.signIn(this@MainActivity) }
+                .onSuccess { user ->
+                    refreshGoogleAccount()
+                    Toast.makeText(this@MainActivity,
+                        "Đã đăng nhập ${user.displayName ?: user.email.orEmpty()}", Toast.LENGTH_SHORT).show()
+                }
+                .onFailure { error ->
+                    refreshGoogleAccount()
+                    val detail = error.message?.take(120).orEmpty()
+                    Toast.makeText(this@MainActivity,
+                        "Chưa đăng nhập được Google${if (detail.isBlank()) "." else ": $detail"}", Toast.LENGTH_LONG).show()
+                }
+        }
+    }
+    private fun signOutGoogle() {
+        binding.setupPanel.googleSignOut.isEnabled = false
+        lifecycleScope.launch {
+            runCatching { googleAuth.signOut() }
+            refreshGoogleAccount()
+            Toast.makeText(this@MainActivity, "Đã đăng xuất Google.", Toast.LENGTH_SHORT).show()
+        }
     }
     private fun setupSportSelection() = when (binding.setupPanel.setupSport.checkedButtonId) {
         R.id.setup_volleyball -> Sport.VOLLEYBALL
@@ -784,6 +829,7 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onResume() {
         super.onResume(); foreground = true; startRemoteBranding()
+        refreshGoogleAccount()
         if (sessionEntered && !live && !prepared && hasPermissions()) binding.preview.post { if (foreground && sessionEntered && !prepared) prepare() }
     }
     override fun onPause() {

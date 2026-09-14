@@ -54,6 +54,55 @@
                 </com.google.android.material.button.MaterialButtonToggleGroup>
             </LinearLayout>
         </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingEnd="12dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="TÀI KHOẢN"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/google_account_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Chưa đăng nhập Google"
+                    android:textColor="#AEC4D2"
+                    android:textSize="12sp" />
+            </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/google_sign_in"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:minWidth="0dp"
+                android:text="ĐĂNG NHẬP GOOGLE"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/google_sign_out"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:minWidth="0dp"
+                android:text="ĐĂNG XUẤT"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:visibility="gone" />
+        </LinearLayout>
         <com.google.android.material.button.MaterialButton android:id="@+id/enter_camera"
             android:layout_width="match_parent" android:layout_height="52dp" android:text="VÀO CAMERA"
             android:layout_marginTop="12dp" android:textStyle="bold" app:backgroundTint="#008EA8" />
