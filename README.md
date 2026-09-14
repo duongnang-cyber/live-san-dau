@@ -1,18 +1,18 @@
-# Live Sân Đấu — 1.21.0 • Chọn giao bóng ngay trên camera
+# Live Sân Đấu — 1.22.0 • Điều khiển Pickleball gọn và bảng điểm truyền hình
 
-**Trạng thái: mã nguồn 1.21 đã chuyển điều khiển tay giao bóng ra bảng điểm nổi trên camera.**
+**Trạng thái: mã nguồn 1.22 đã đưa chọn tay giao bóng vào đúng cụm tăng/giảm điểm và thiết kế lại bảng Pickleball.**
 
 > Bản GitHub Actions dùng khóa debug tạm thời của máy build và không công khai khóa ký cũ. Khi cài APK từ Actions, có thể phải gỡ bản thử nghiệm cũ nếu Android báo chữ ký không khớp.
 
-- Khi đội A hoặc B giao bóng, hàng của đội đó hiện ký hiệu xanh dọc.
+- Mỗi đội có hai nút **GIAO T1 / GIAO T2** ngay bên dưới nút cộng/trừ điểm của chính đội đó; không phải mở cài đặt và không có hàng chọn riêng che camera.
+- Nút đang chọn sáng xanh; chạm lại đúng nút đang sáng để bỏ trạng thái giao bóng.
+- Khi đội A hoặc B giao bóng, hàng của đội đó trên bảng truyền hình hiện ký hiệu xanh dọc.
 - Tay giao số 1 hiện **một vạch xanh**; tay giao số 2 hiện **hai vạch xanh**.
-- Bốn nút **A · T1, A · T2, B · T1, B · T2** nằm ngay dưới nút cộng/trừ điểm; một lần chạm chọn đồng thời bên giao và tay giao.
-- Chạm lại nút đang sáng xanh để tắt dấu giao bóng.
-- Vạch đi theo đúng đội đang giao và biến mất khi chọn “Không hiển thị”.
-- Áp dụng cho cả bốn mẫu bảng tỉ số pickleball; bóng chuyền vẫn dùng chấm giao bóng cũ.
-- Dòng trạng thái dưới bảng đổi thành `GIAO BÓNG A/B · TAY 1/2`; mục chỉnh sửa ghi rõ số vạch tương ứng.
-- Thêm kiểm thử cho số vạch, vị trí theo đội A/B và trạng thái không giao bóng.
-- Tăng `versionCode` lên 22 và `versionName` lên `1.21.0`.
+- Bảng Pickleball mới có dải tên giải màu nổi, hai hàng đội/VĐV, cột set và điểm tách rõ, ô điểm lớn, trạng thái giao bóng và đồng hồ ở chân bảng.
+- Bố cục gọn ở góc trên trái theo phong cách truyền hình, ưu tiên khả năng đọc trên màn hình điện thoại; không dùng logo của đài hay giải đấu khác.
+- Cả bốn phong cách màu Pickleball dùng chung lưới bố cục mới; bóng đá và bóng chuyền giữ bố cục riêng.
+- Thêm kiểm thử vị trí điều khiển trong từng đội, lưới bảng chuyên nghiệp, số vạch và vị trí theo đội A/B.
+- Tăng `versionCode` lên 23 và `versionName` lên `1.22.0`.
 
 ---
 

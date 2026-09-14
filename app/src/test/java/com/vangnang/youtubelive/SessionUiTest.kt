@@ -52,9 +52,10 @@ class SessionUiTest {
     }
     @Test fun pickleballServeControlsAreOnCameraPanelNotInSettings() {
         val layout = File("src/main/res/layout/activity_main.xml").readText()
-        for (id in listOf("quick_serve_a1", "quick_serve_a2", "quick_serve_b1", "quick_serve_b2")) {
+        for (id in listOf("quick_serve_a_controls", "quick_serve_b_controls", "quick_serve_a1", "quick_serve_a2", "quick_serve_b1", "quick_serve_b2")) {
             assertTrue(layout.contains("@+id/$id"))
         }
+        assertFalse(layout.contains("@+id/quick_serve_controls"))
         assertFalse(File("src/main/java/com/vangnang/youtubelive/ScorePanel.kt").readText().contains("Pickleball: tay giao bóng"))
     }
 }

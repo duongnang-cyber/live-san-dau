@@ -36,18 +36,24 @@ class BroadcastDesignTest {
     @Test fun pickleballServerOneHasOneGreenBarAndServerTwoHasTwo() {
         for (style in BoardStyle.entries) for (server in 1..2) {
             val marks = BroadcastDesign.board(demo.copy(sport = Sport.PICKLEBALL, serving = 1, serverNumber = server).withBoardStyle(style), 0)
-            val bars = marks.filterIsInstance<Mark.Panel>().filter { it.ink.colors == listOf(BroadcastDesign.serveGreen) && it.w == 5f && it.h == 40f }
+            val bars = marks.filterIsInstance<Mark.Panel>().filter { it.ink.colors == listOf(BroadcastDesign.serveGreen) && it.w == 5f && it.h == 34f }
             assertEquals(server, bars.size)
-            assertTrue(bars.all { it.y == 98f })
+            assertTrue(bars.all { it.y == 95f })
         }
     }
     @Test fun pickleballBarsFollowServingSideAndHideWhenUnset() {
         val teamB = BroadcastDesign.board(demo.copy(sport = Sport.PICKLEBALL, serving = 2, serverNumber = 2), 0)
             .filterIsInstance<Mark.Panel>().filter { it.ink.colors == listOf(BroadcastDesign.serveGreen) }
-        assertEquals(2, teamB.size); assertTrue(teamB.all { it.y == 155f })
+        assertEquals(2, teamB.size); assertTrue(teamB.all { it.y == 145f })
         val hidden = BroadcastDesign.board(demo.copy(sport = Sport.PICKLEBALL, serving = 0, serverNumber = 2), 0)
             .filterIsInstance<Mark.Panel>().filter { it.ink.colors == listOf(BroadcastDesign.serveGreen) }
         assertTrue(hidden.isEmpty())
+    }
+    @Test fun pickleballUsesCompactProfessionalBroadcastGrid() {
+        val marks = BroadcastDesign.board(demo.copy(sport = Sport.PICKLEBALL), 0).filterIsInstance<Mark.Panel>()
+        assertTrue(marks.any { it.x == 40f && it.y == 34f && it.w == 520f && it.h == 34f && it.ink.colors.size == 2 })
+        assertTrue(marks.any { it.x == 450f && it.y == 88f && it.w == 110f && it.h == 48f })
+        assertTrue(marks.any { it.x == 450f && it.y == 138f && it.w == 110f && it.h == 48f })
     }
     @Test fun customBreakTitleIsRendered() {
         val marks = BroadcastDesign.board(demo.copy(intermission = true, breakTitle = "Kết thúc trận"), 0)

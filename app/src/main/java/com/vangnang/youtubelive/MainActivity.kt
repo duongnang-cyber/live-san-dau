@@ -420,7 +420,9 @@ class MainActivity : AppCompatActivity() {
         val b = "${s.teamB} · ${s.scoreB}"
         if (binding.quickTeamA.text.toString() != a) binding.quickTeamA.text = a
         if (binding.quickTeamB.text.toString() != b) binding.quickTeamB.text = b
-        binding.quickServeControls.visibility = if (show && s.sport == Sport.PICKLEBALL) View.VISIBLE else View.GONE
+        val serveVisibility = if (show && s.sport == Sport.PICKLEBALL) View.VISIBLE else View.GONE
+        binding.quickServeAControls.visibility = serveVisibility
+        binding.quickServeBControls.visibility = serveVisibility
         val activeServe = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.live_green))
         val idleServe = ColorStateList.valueOf(0xFF274558.toInt())
         listOf(

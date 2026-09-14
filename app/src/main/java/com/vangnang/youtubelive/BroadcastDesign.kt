@@ -52,6 +52,7 @@ object BroadcastDesign {
         when {
             s.intermission -> intermission(scene, s, now)
             s.sport == Sport.FOOTBALL -> footballPro(scene, s, now)
+            s.sport == Sport.PICKLEBALL -> pickleballPro(scene, s, now)
             else -> courtPro(scene, s, now)
         }
         return scene.marks
@@ -126,6 +127,63 @@ object BroadcastDesign {
             dot(51, 34, 3, accent)
             text("FOOTBALL", 63, 39, 12, 170, accent, minimum = 11)
         }
+    }
+
+    /** Compact broadcast layout dedicated to Pickleball. */
+    private fun pickleballPro(d: Scene, s: ScoreState, now: Long) = with(d) {
+        val style = s.boardStyle()
+        val light = style == BoardStyle.MINIMAL
+        val champion = style == BoardStyle.CHAMPION
+        val header = when (style) {
+            BoardStyle.ARENA -> Ink(listOf(0xFFE8471B.toInt(), 0xFFD80B7A.toInt()))
+            BoardStyle.CLASSIC -> Ink(listOf(0xFF5F487E.toInt(), 0xFFD80B7A.toInt()))
+            BoardStyle.MINIMAL -> Ink(listOf(0xFF007A8E.toInt(), 0xFF16B5C4.toInt()))
+            else -> Ink(listOf(0xFFFFB000.toInt(), 0xFFE8471B.toInt()))
+        }
+        val body = if (light) 0xFFF4F7F9.toInt() else if (champion) 0xFF11161D.toInt() else 0xF5071D32.toInt()
+        val alternate = if (light) 0xFFE7EEF2.toInt() else if (champion) 0xFF20262D.toInt() else 0xFF102D42.toInt()
+        val setCell = if (light) 0xFFD8E3E9.toInt() else 0xFF1A3C50.toInt()
+        val scoreCell = if (champion) 0xFFFFB000.toInt() else if (light) navy else 0xFF073B55.toInt()
+        val nameInk = if (light) navy else white
+        val scoreInk = if (champion) 0xFF15191E.toInt() else white
+        val labelInk = if (light) 0xFF486271.toInt() else 0xFFAED3E4.toInt()
+
+        // Shadow and a colored event header keep the graphic readable on any camera image.
+        panel(45, 39, 520, 182, Ink(0x66000000), 8)
+        panel(40, 34, 520, 34, header, 6)
+        text("PICKLEBALL", 54, 56, 15, 128, white, minimum = 11)
+        text(upper(s.event), 188, 55, 11, 244, white, minimum = 9)
+        text(upper(s.period), 505, 56, 13, 94, white, true, 10)
+
+        panel(40, 68, 520, 20, Ink(if (light) 0xFFE0E8EC.toInt() else deep))
+        text("ĐỘI / VĐV", 78, 82, 10, 292, labelInk, minimum = 9)
+        text("SET", 420, 82, 10, 52, labelInk, true, 9)
+        text("ĐIỂM", 505, 82, 10, 88, labelInk, true, 9)
+
+        for (row in 0..1) {
+            val y = 88 + row * 50
+            val teamRail = if (row == 0) 0xFF20C4D6.toInt() else 0xFFFFC857.toInt()
+            panel(40, y, 350, 48, Ink(if (row == 0) body else alternate))
+            panel(390, y, 60, 48, Ink(setCell))
+            panel(450, y, 110, 48, Ink(scoreCell))
+            panel(40, y, 5, 48, Ink(teamRail), 2)
+            text(upper(if (row == 0) s.teamA else s.teamB), 78, y + 31, 20, 292, nameInk, minimum = 14)
+            text("${if (row == 0) s.setsA else s.setsB}", 420, y + 33, 24, 52, if (light) navy else white, true, 17, true)
+            text("${if (row == 0) s.scoreA else s.scoreB}", 505, y + 36, 34, 88, scoreInk, true, 23, true)
+            if (s.serving == row + 1) {
+                // One green bar = server 1; two green bars = server 2.
+                panel(55, y + 7, 5, 34, Ink(serveGreen), 2)
+                if (s.serverNumber == 2) panel(63, y + 7, 5, 34, Ink(serveGreen), 2)
+            }
+        }
+
+        panel(40, 188, 520, 28, Ink(if (light) navy else deep), 0)
+        val serveLabel = if (s.serving != 0) {
+            "GIAO BÓNG ${if (s.serving == 1) "A" else "B"} · TAY ${s.serverNumber}"
+        } else "CHƯA CHỌN GIAO BÓNG"
+        text(serveLabel, 54, 207, 12, 344, if (s.serving == 0) labelInk else serveGreen, minimum = 10)
+        text(s.clock(now), 512, 208, 15, 80, white, true, 11, true)
+        panel(40, 216, 520, 2, Ink(if (champion) gold else cyan))
     }
 
     private fun courtPro(d: Scene, s: ScoreState, now: Long) = with(d) {
