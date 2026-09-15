@@ -1,4 +1,17 @@
-# Live Sân Đấu — 1.23.0 • Overlay tùy biến và FPS trung thực
+# Live Sân Đấu — 1.28.0 • YouTube không cần nhập Stream Key
+
+**Trạng thái: người dùng đã kết nối kênh YouTube chỉ cần vào camera, bấm LIVE và xác nhận tiêu đề.**
+
+- Ẩn hoàn toàn ô Server URL và Stream Key trong phiên YouTube; thông tin nhạy cảm chỉ được giữ nội bộ trong phiên hiện tại.
+- Bấm **LIVE** khi chưa có phiên sẽ tự mở hộp tạo buổi phát, điền sẵn tiêu đề theo môn và thời gian, mặc định **Công khai**.
+- Bấm **PHÁT NGAY** để ứng dụng tự tạo broadcast + stream, liên kết chúng, lấy RTMPS/stream key từ YouTube rồi bắt đầu phát.
+- Nút **Chọn buổi phát có sẵn (tùy chọn)** vẫn giữ cho người dùng nâng cao nhưng không bắt buộc.
+- Facebook và URL khác vẫn dùng Stream Key thủ công vì chưa tích hợp OAuth/API tương ứng.
+- Tăng `versionCode` lên 29 và `versionName` lên `1.28.0`.
+
+---
+
+# Lịch sử — 1.23.0 • Overlay tùy biến và FPS trung thực
 
 **Trạng thái: nhãn đỏ được điều khiển từ xa, các lớp hiển thị có thể kéo/phóng và bảng màu có thể tùy chỉnh.**
 
