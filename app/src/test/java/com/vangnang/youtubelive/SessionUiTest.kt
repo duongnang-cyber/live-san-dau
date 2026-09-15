@@ -37,6 +37,11 @@ class SessionUiTest {
         assertFalse(sessionShowsServer(Destination.FACEBOOK)); assertFalse(sessionShowsServer(Destination.YOUTUBE))
         assertTrue(sessionShowsServer(Destination.CUSTOM))
     }
+    @Test fun youtubeDoesNotAskForManualStreamKey() {
+        assertFalse(sessionNeedsManualKey(Destination.YOUTUBE))
+        assertTrue(sessionNeedsManualKey(Destination.FACEBOOK))
+        assertTrue(sessionNeedsManualKey(Destination.CUSTOM))
+    }
     @Test fun credentialLabelsAreDestinationSpecific() {
         assertEquals("Stream Key Facebook", sessionKeyLabel(Destination.FACEBOOK))
         assertEquals("Stream Key YouTube", sessionKeyLabel(Destination.YOUTUBE))
