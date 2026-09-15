@@ -23,6 +23,8 @@ class YouTubeAuthorizationUiTest {
         assertTrue(controller.contains("liveBroadcasts"))
         assertTrue(controller.contains("liveStreams"))
         assertTrue(controller.contains("streamName"))
+        assertTrue(controller.contains("?part=id,cdn&id="))
+        assertFalse(controller.contains("?part=id,cdn&id=\${encode(streamId)}&mine=true"))
         assertTrue(gradle.contains("play-services-auth"))
         assertFalse(setup.contains("email_sign_in"))
         assertFalse(gradle.contains("firebase-auth"))
