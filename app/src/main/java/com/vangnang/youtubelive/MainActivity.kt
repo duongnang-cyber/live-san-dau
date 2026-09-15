@@ -36,6 +36,8 @@ import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.library.generic.GenericStream
 import com.pedro.library.util.FpsListener
 import com.vangnang.youtubelive.databinding.ActivityMainBinding
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 import kotlinx.coroutines.launch
@@ -193,7 +195,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.microphone.setOnClickListener { muted = !muted; applyMute() }
         binding.sportSettings.setOnClickListener { showScorePanel() }
-        binding.youtubeCreateLive.setOnClickListener { prepareYouTubeLiveSession() }
+        binding.youtubeCreateLive.setOnClickListener { prepareYouTubeLiveSession(autoStart = false) }
         configureSetup()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -269,20 +271,24 @@ class MainActivity : AppCompatActivity() {
         showYouTubeConnection(youtubeChannel)
         Toast.makeText(this, message.take(180), Toast.LENGTH_LONG).show()
     }
-    private fun prepareYouTubeLiveSession() {
+    private fun prepareYouTubeLiveSession(autoStart: Boolean) {
         requestYouTubeAuthorization {
             val token = youtubeAccessToken ?: return@requestYouTubeAuthorization
             binding.youtubeCreateLive.isEnabled = false
             status("Đang tải các phiên live YouTube…")
             lifecycleScope.launch {
                 runCatching { youtube.upcomingBroadcasts(token) }
-                    .onSuccess { showYouTubeLiveDialog(token, it) }
+                    .onSuccess { showYouTubeLiveDialog(token, it, autoStart) }
                     .onFailure { showYouTubeApiError(it) }
                 binding.youtubeCreateLive.isEnabled = true
             }
         }
     }
-    private fun showYouTubeLiveDialog(token: String, broadcasts: List<YouTubeBroadcast>) {
+    private fun showYouTubeLiveDialog(
+        token: String,
+        broadcasts: List<YouTubeBroadcast>,
+        autoStart: Boolean
+    ) {
         val content = layoutInflater.inflate(R.layout.dialog_youtube_live, null)
         val chooser = content.findViewById<Spinner>(R.id.youtube_broadcast)
         val title = content.findViewById<EditText>(R.id.youtube_title)
@@ -299,6 +305,8 @@ class MainActivity : AppCompatActivity() {
             android.R.layout.simple_spinner_dropdown_item,
             listOf("Không công khai", "Công khai", "Riêng tư")
         )
+        title.setText(defaultYouTubeTitle())
+        privacy.setSelection(1)
         chooser.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val creating = position == 0
@@ -309,9 +317,9 @@ class MainActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Phiên live YouTube")
+            .setTitle(if (autoStart) "Phát trực tiếp YouTube" else "Chọn phiên live YouTube")
             .setView(content)
-            .setPositiveButton("TIẾP TỤC", null)
+            .setPositiveButton(if (autoStart) "PHÁT NGAY" else "CHUẨN BỊ", null)
             .setNegativeButton("HỦY", null)
             .create()
         dialog.setOnShowListener {
@@ -337,8 +345,10 @@ class MainActivity : AppCompatActivity() {
                         binding.controlsPanel.visibility = View.VISIBLE
                         status("Đã sẵn sàng phiên YouTube: ${session.title}")
                         Toast.makeText(this@MainActivity,
-                            "Đã tự lấy máy chủ và Stream Key. Bấm LIVE khi camera sẵn sàng.",
+                            if (autoStart) "Đã tạo phiên YouTube. Đang bắt đầu phát…"
+                            else "Đã chuẩn bị phiên YouTube. Bấm LIVE khi camera sẵn sàng.",
                             Toast.LENGTH_LONG).show()
+                        if (autoStart) startLive()
                     }.onFailure {
                         showYouTubeApiError(it)
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
@@ -347,6 +357,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
         dialog.show()
+    }
+    private fun defaultYouTubeTitle(): String {
+        val time = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+        return "Trực tiếp ${scoreState.sport.title} • $time"
     }
     private fun showYouTubeApiError(error: Throwable) {
         val detail = error.message?.take(180).orEmpty()
@@ -424,12 +438,15 @@ class MainActivity : AppCompatActivity() {
         binding.sportSettings.text = "Cài đặt ${scoreState.sport.title}"
         binding.keyInput.hint = sessionKeyLabel(destination)
         binding.serverInput.visibility = if (sessionShowsServer(destination)) View.VISIBLE else View.GONE
+        binding.keyInput.visibility = if (sessionNeedsManualKey(destination)) View.VISIBLE else View.GONE
         binding.youtubeCreateLive.visibility = if (destination == Destination.YOUTUBE) View.VISIBLE else View.GONE
+        binding.youtubeCreateLive.text = "CHỌN BUỔI PHÁT CÓ SẴN (TÙY CHỌN)"
         binding.platformHelp.text = when (destination) {
             Destination.FACEBOOK -> "Facebook: tối đa 1080p. Dán key của buổi live."
-            Destination.YOUTUBE -> "YouTube: hỗ trợ chọn tới 2K nếu camera đáp ứng. Dán key của buổi live."
+            Destination.YOUTUBE -> "YouTube không cần nhập Stream Key. Bấm LIVE, kiểm tra tiêu đề rồi chọn PHÁT NGAY."
             Destination.CUSTOM -> "Dán URL máy chủ RTMP/RTMPS và key, không phải link xem video."
-        } + "\nKey không được lưu. Giữ ứng dụng mở khi live."
+        } + if (destination == Destination.YOUTUBE) "\nGiữ ứng dụng mở khi live."
+            else "\nKey không được lưu. Giữ ứng dụng mở khi live."
     }
     private fun showScorePanel() {
         setLayoutEditing(false)
@@ -887,6 +904,10 @@ class MainActivity : AppCompatActivity() {
         return false
     }
     private fun startLive() {
+        if (destination == Destination.YOUTUBE && binding.streamKey.text.isNullOrBlank()) {
+            prepareYouTubeLiveSession(autoStart = true)
+            return
+        }
         val url = try { buildStreamUrl(binding.serverUrl.text.toString(), binding.streamKey.text.toString()) }
         catch (error: IllegalArgumentException) { status(error.message ?: "Kiểm tra URL và key."); binding.controlsPanel.visibility = View.VISIBLE; return }
         if ((!prepared || active != selected()) && !prepare()) return
