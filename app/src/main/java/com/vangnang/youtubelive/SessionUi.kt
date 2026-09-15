@@ -8,6 +8,7 @@ fun sessionKeyLabel(destination: Destination) = when (destination) {
     Destination.CUSTOM -> "Stream Key RTMP"
 }
 fun sessionShowsServer(destination: Destination) = destination == Destination.CUSTOM
+fun sessionNeedsManualKey(destination: Destination) = destination != Destination.YOUTUBE
 data class SportControls(val sets: Boolean, val serving: Boolean, val serverNumber: Boolean,
     val periodLabel: String, val breakLabel: String)
 fun sportControls(sport: Sport): SportControls = when (sport) {
