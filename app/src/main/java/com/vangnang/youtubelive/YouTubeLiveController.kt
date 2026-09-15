@@ -148,7 +148,9 @@ class YouTubeLiveController {
         val root = request(
             "GET",
             "https://www.googleapis.com/youtube/v3/liveStreams" +
-                "?part=id,cdn&id=${encode(streamId)}&mine=true&maxResults=1",
+                // liveStreams.list accepts exactly one filter. `id` already identifies the
+                // stream; adding `mine` makes YouTube return incompatibleParameters.
+                "?part=id,cdn&id=${encode(streamId)}",
             accessToken
         )
         val info = root.optJSONArray("items")?.optJSONObject(0)
