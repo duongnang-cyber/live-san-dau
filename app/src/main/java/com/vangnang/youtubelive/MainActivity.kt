@@ -323,8 +323,8 @@ class MainActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                val privacyValue = listOf("unlisted", "public", "private")
-                    [privacy.selectedItemPosition.coerceIn(0, 2)]
+                val privacyOptions = listOf("unlisted", "public", "private")
+                val privacyValue = privacyOptions[privacy.selectedItemPosition.coerceIn(0, 2)]
                 lifecycleScope.launch {
                     val result = runCatching {
                         if (selected == 0) youtube.createBroadcast(token, newTitle, privacyValue)
