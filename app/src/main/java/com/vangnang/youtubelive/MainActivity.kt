@@ -1,6 +1,7 @@
 package com.vangnang.youtubelive
 
 import android.Manifest
+import android.app.Activity
 import android.app.ActivityManager
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
@@ -14,11 +15,13 @@ import android.view.WindowManager
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.Toast
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.IntentSenderRequest
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,6 +30,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.library.generic.GenericStream
@@ -63,12 +67,26 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var scoreState = ScoreState()
     @Volatile private var sportsLook = SportsLook.LIGHT
     private lateinit var scoreStore: ScoreStore
-    private lateinit var googleAuth: GoogleAuthController
+    private val youtube = YouTubeLiveController()
+    private var youtubeAccessToken: String? = null
+    private var youtubeChannel: YouTubeChannel? = null
+    private var pendingYouTubeAction: (() -> Unit)? = null
     private val scoreHistory = ArrayDeque<ScoreState>()
     private var scorePanel: ScorePanel? = null
     private val brandingHandler = Handler(Looper.getMainLooper())
     private val brandingExecutor = Executors.newSingleThreadExecutor()
     private var brandingToken = 0
+    private val youtubeAuthorization = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) {
+            youtubeAuthorizationFailed("Anh chưa cấp quyền YouTube.")
+            return@registerForActivityResult
+        }
+        runCatching { youtube.result(this, result.data) }
+            .onSuccess { acceptYouTubeAuthorization(it) }
+            .onFailure { youtubeAuthorizationFailed(it.message ?: "Không nhận được quyền YouTube.") }
+    }
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (sessionEntered && hasPermissions()) prepare() else if (sessionEntered) {
             status("Cần cấp quyền camera và micro.")
@@ -81,7 +99,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        googleAuth = GoogleAuthController(this)
         scoreStore = ScoreStore(getSharedPreferences("score_overlay", MODE_PRIVATE))
         scoreState = scoreStore.load().copy(tickerLabel = "")
         sportsLook = SportsLook.fromStored(getSharedPreferences("image_settings", MODE_PRIVATE).getString("sports_look", null))
@@ -176,6 +193,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.microphone.setOnClickListener { muted = !muted; applyMute() }
         binding.sportSettings.setOnClickListener { showScorePanel() }
+        binding.youtubeCreateLive.setOnClickListener { prepareYouTubeLiveSession() }
         configureSetup()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -191,132 +209,151 @@ class MainActivity : AppCompatActivity() {
     }
     private fun configureSetup() {
         binding.setupPanel.enterCamera.setOnClickListener { enterCamera() }
-        binding.setupPanel.googleSignIn.setOnClickListener { signInGoogle() }
-        binding.setupPanel.emailSignIn.setOnClickListener { showEmailAuthDialog() }
-        binding.setupPanel.googleSignOut.setOnClickListener { signOutAccount() }
-        refreshAccount()
+        binding.setupPanel.youtubeConnect.setOnClickListener { requestYouTubeAuthorization() }
+        binding.setupPanel.youtubeReconnect.setOnClickListener { requestYouTubeAuthorization() }
+        refreshYouTubeConnection()
     }
-    private fun refreshAccount() {
-        val user = googleAuth.currentUser
-        binding.setupPanel.googleAccountStatus.text = when {
-            user == null -> "Chưa đăng nhập"
-            !user.displayName.isNullOrBlank() -> "${user.displayName} • ${user.email.orEmpty()}"
-            else -> user.email ?: "Đã đăng nhập"
+    private fun refreshYouTubeConnection() {
+        youtube.authorize(this)
+            .addOnSuccessListener { result ->
+                if (!result.hasResolution()) acceptYouTubeAuthorization(result)
+                else showYouTubeConnection(null)
+            }
+            .addOnFailureListener { showYouTubeConnection(null) }
+    }
+    private fun requestYouTubeAuthorization(afterConnected: (() -> Unit)? = null) {
+        pendingYouTubeAction = afterConnected
+        binding.setupPanel.youtubeConnect.isEnabled = false
+        binding.setupPanel.youtubeReconnect.isEnabled = false
+        binding.setupPanel.youtubeAccountStatus.text = "Đang mở quyền YouTube…"
+        youtube.authorize(this)
+            .addOnSuccessListener { result ->
+                if (result.hasResolution()) {
+                    val pendingIntent = result.pendingIntent
+                    if (pendingIntent == null) youtubeAuthorizationFailed("Không mở được màn hình cấp quyền.")
+                    else youtubeAuthorization.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                } else acceptYouTubeAuthorization(result)
+            }
+            .addOnFailureListener { youtubeAuthorizationFailed(it.message ?: "Không kết nối được YouTube.") }
+    }
+    private fun acceptYouTubeAuthorization(result: AuthorizationResult) {
+        val token = result.accessToken
+        if (token.isNullOrBlank()) {
+            youtubeAuthorizationFailed("Google chưa trả về quyền truy cập YouTube.")
+            return
         }
-        binding.setupPanel.googleSignIn.visibility = if (user == null) View.VISIBLE else View.GONE
-        binding.setupPanel.emailSignIn.visibility = if (user == null) View.VISIBLE else View.GONE
-        binding.setupPanel.googleSignOut.visibility = if (user == null) View.GONE else View.VISIBLE
-        binding.setupPanel.googleSignIn.isEnabled = true
-        binding.setupPanel.emailSignIn.isEnabled = true
-        binding.setupPanel.googleSignOut.isEnabled = true
-    }
-    private fun signInGoogle() {
-        binding.setupPanel.googleSignIn.isEnabled = false
-        binding.setupPanel.googleAccountStatus.text = "Đang mở tài khoản Google…"
+        youtubeAccessToken = token
+        binding.setupPanel.youtubeAccountStatus.text = "Đang đọc kênh YouTube…"
         lifecycleScope.launch {
-            runCatching { googleAuth.signIn(this@MainActivity) }
-                .onSuccess { user ->
-                    refreshAccount()
-                    Toast.makeText(this@MainActivity,
-                        "Đã đăng nhập ${user.displayName ?: user.email.orEmpty()}", Toast.LENGTH_SHORT).show()
+            runCatching { youtube.channel(token) }
+                .onSuccess { channel ->
+                    youtubeChannel = channel
+                    showYouTubeConnection(channel)
+                    val action = pendingYouTubeAction
+                    pendingYouTubeAction = null
+                    action?.invoke()
                 }
-                .onFailure { error ->
-                    refreshAccount()
-                    val detail = error.message?.take(120).orEmpty()
-                    Toast.makeText(this@MainActivity,
-                        "Chưa đăng nhập được Google${if (detail.isBlank()) "." else ": $detail"}", Toast.LENGTH_LONG).show()
-                }
+                .onFailure { youtubeAuthorizationFailed(it.message ?: "Không đọc được kênh YouTube.") }
         }
     }
-    private fun showEmailAuthDialog() {
-        val content = layoutInflater.inflate(R.layout.dialog_email_auth, null)
-        val email = content.findViewById<EditText>(R.id.auth_email)
-        val password = content.findViewById<EditText>(R.id.auth_password)
-        val reset = content.findViewById<TextView>(R.id.auth_reset_password)
+    private fun showYouTubeConnection(channel: YouTubeChannel?) {
+        binding.setupPanel.youtubeAccountStatus.text = channel?.let { "Đã kết nối: ${it.title}" }
+            ?: "Chưa cấp quyền YouTube"
+        binding.setupPanel.youtubeConnect.visibility = if (channel == null) View.VISIBLE else View.GONE
+        binding.setupPanel.youtubeReconnect.visibility = if (channel == null) View.GONE else View.VISIBLE
+        binding.setupPanel.youtubeConnect.isEnabled = true
+        binding.setupPanel.youtubeReconnect.isEnabled = true
+    }
+    private fun youtubeAuthorizationFailed(message: String) {
+        pendingYouTubeAction = null
+        showYouTubeConnection(youtubeChannel)
+        Toast.makeText(this, message.take(180), Toast.LENGTH_LONG).show()
+    }
+    private fun prepareYouTubeLiveSession() {
+        requestYouTubeAuthorization {
+            val token = youtubeAccessToken ?: return@requestYouTubeAuthorization
+            binding.youtubeCreateLive.isEnabled = false
+            status("Đang tải các phiên live YouTube…")
+            lifecycleScope.launch {
+                runCatching { youtube.upcomingBroadcasts(token) }
+                    .onSuccess { showYouTubeLiveDialog(token, it) }
+                    .onFailure { showYouTubeApiError(it) }
+                binding.youtubeCreateLive.isEnabled = true
+            }
+        }
+    }
+    private fun showYouTubeLiveDialog(token: String, broadcasts: List<YouTubeBroadcast>) {
+        val content = layoutInflater.inflate(R.layout.dialog_youtube_live, null)
+        val chooser = content.findViewById<Spinner>(R.id.youtube_broadcast)
+        val title = content.findViewById<EditText>(R.id.youtube_title)
+        val titleInput = content.findViewById<View>(R.id.youtube_title_input)
+        val privacy = content.findViewById<Spinner>(R.id.youtube_privacy)
+        val privacyLabel = content.findViewById<TextView>(R.id.youtube_privacy_label)
+        chooser.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            listOf("＋ TẠO BUỔI PHÁT MỚI") + broadcasts.map { it.title }
+        )
+        privacy.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            listOf("Không công khai", "Công khai", "Riêng tư")
+        )
+        chooser.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val creating = position == 0
+                titleInput.visibility = if (creating) View.VISIBLE else View.GONE
+                privacy.visibility = if (creating) View.VISIBLE else View.GONE
+                privacyLabel.visibility = if (creating) View.VISIBLE else View.GONE
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Tài khoản Live Sân Đấu")
+            .setTitle("Phiên live YouTube")
             .setView(content)
-            .setPositiveButton("ĐĂNG NHẬP", null)
-            .setNeutralButton("TẠO TÀI KHOẢN", null)
+            .setPositiveButton("TIẾP TỤC", null)
             .setNegativeButton("HỦY", null)
             .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                authenticateEmail(dialog, email, password, create = false)
-            }
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                authenticateEmail(dialog, email, password, create = true)
-            }
-            reset.setOnClickListener {
-                val address = email.text.toString().trim()
-                if (!validEmail(address)) {
-                    email.error = "Nhập đúng địa chỉ email"
-                } else {
-                    reset.isEnabled = false
-                    lifecycleScope.launch {
-                        runCatching { googleAuth.sendPasswordReset(address) }
-                            .onSuccess {
-                                Toast.makeText(this@MainActivity,
-                                    "Đã gửi email đặt lại mật khẩu.", Toast.LENGTH_LONG).show()
-                            }
-                            .onFailure { showAuthError("Chưa gửi được email", it) }
-                        reset.isEnabled = true
+                val selected = chooser.selectedItemPosition
+                val newTitle = title.text.toString().trim()
+                if (selected == 0 && newTitle.isBlank()) {
+                    title.error = "Nhập tiêu đề buổi phát"
+                    return@setOnClickListener
+                }
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                val privacyValue = listOf("unlisted", "public", "private")
+                    [privacy.selectedItemPosition.coerceIn(0, 2)]
+                lifecycleScope.launch {
+                    val result = runCatching {
+                        if (selected == 0) youtube.createBroadcast(token, newTitle, privacyValue)
+                        else youtube.useBroadcast(token, broadcasts[selected - 1])
+                    }
+                    result.onSuccess { session ->
+                        binding.serverUrl.setText(session.serverUrl)
+                        binding.streamKey.setText(session.streamKey)
+                        dialog.dismiss()
+                        binding.controlsPanel.visibility = View.VISIBLE
+                        status("Đã sẵn sàng phiên YouTube: ${session.title}")
+                        Toast.makeText(this@MainActivity,
+                            "Đã tự lấy máy chủ và Stream Key. Bấm LIVE khi camera sẵn sàng.",
+                            Toast.LENGTH_LONG).show()
+                    }.onFailure {
+                        showYouTubeApiError(it)
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                     }
                 }
             }
         }
         dialog.show()
     }
-    private fun authenticateEmail(
-        dialog: AlertDialog,
-        emailInput: EditText,
-        passwordInput: EditText,
-        create: Boolean
-    ) {
-        val email = emailInput.text.toString().trim()
-        val password = passwordInput.text.toString()
-        if (!validEmail(email)) {
-            emailInput.error = "Nhập đúng địa chỉ email"
-            return
-        }
-        if (password.length < 6) {
-            passwordInput.error = "Mật khẩu cần ít nhất 6 ký tự"
-            return
-        }
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = false
-        lifecycleScope.launch {
-            val result = runCatching {
-                if (create) googleAuth.createEmailAccount(email, password)
-                else googleAuth.signInEmail(email, password)
-            }
-            result.onSuccess { user ->
-                dialog.dismiss()
-                refreshAccount()
-                Toast.makeText(this@MainActivity,
-                    if (create) "Đã tạo tài khoản ${user.email.orEmpty()}"
-                    else "Đã đăng nhập ${user.email.orEmpty()}", Toast.LENGTH_LONG).show()
-            }.onFailure {
-                showAuthError(if (create) "Chưa tạo được tài khoản" else "Đăng nhập thất bại", it)
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = true
-            }
-        }
-    }
-    private fun validEmail(value: String) =
-        android.util.Patterns.EMAIL_ADDRESS.matcher(value).matches()
-
-    private fun showAuthError(prefix: String, error: Throwable) {
-        val detail = error.message?.take(150).orEmpty()
-        Toast.makeText(this, "$prefix${if (detail.isBlank()) "." else ": $detail"}", Toast.LENGTH_LONG).show()
-    }
-    private fun signOutAccount() {
-        binding.setupPanel.googleSignOut.isEnabled = false
-        lifecycleScope.launch {
-            runCatching { googleAuth.signOut() }
-            refreshAccount()
-            Toast.makeText(this@MainActivity, "Đã đăng xuất.", Toast.LENGTH_SHORT).show()
-        }
+    private fun showYouTubeApiError(error: Throwable) {
+        val detail = error.message?.take(180).orEmpty()
+        status("Chưa chuẩn bị được phiên YouTube.")
+        Toast.makeText(this,
+            "YouTube chưa thực hiện được${if (detail.isBlank()) "." else ": $detail"}",
+            Toast.LENGTH_LONG).show()
     }
     private fun setupSportSelection() = when (binding.setupPanel.setupSport.checkedButtonId) {
         R.id.setup_volleyball -> Sport.VOLLEYBALL
@@ -387,6 +424,7 @@ class MainActivity : AppCompatActivity() {
         binding.sportSettings.text = "Cài đặt ${scoreState.sport.title}"
         binding.keyInput.hint = sessionKeyLabel(destination)
         binding.serverInput.visibility = if (sessionShowsServer(destination)) View.VISIBLE else View.GONE
+        binding.youtubeCreateLive.visibility = if (destination == Destination.YOUTUBE) View.VISIBLE else View.GONE
         binding.platformHelp.text = when (destination) {
             Destination.FACEBOOK -> "Facebook: tối đa 1080p. Dán key của buổi live."
             Destination.YOUTUBE -> "YouTube: hỗ trợ chọn tới 2K nếu camera đáp ứng. Dán key của buổi live."
@@ -916,7 +954,7 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onResume() {
         super.onResume(); foreground = true; startRemoteBranding()
-        refreshAccount()
+        refreshYouTubeConnection()
         if (sessionEntered && !live && !prepared && hasPermissions()) binding.preview.post { if (foreground && sessionEntered && !prepared) prepare() }
     }
     override fun onPause() {

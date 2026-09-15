@@ -69,48 +69,38 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="TÀI KHOẢN"
+                    android:text="KẾT NỐI YOUTUBE"
                     android:textColor="#FFFFFF"
                     android:textStyle="bold" />
                 <TextView
-                    android:id="@+id/google_account_status"
+                    android:id="@+id/youtube_account_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:text="Chưa đăng nhập"
+                    android:text="Chưa cấp quyền YouTube"
                     android:textColor="#AEC4D2"
                     android:textSize="12sp" />
             </LinearLayout>
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/email_sign_in"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:layout_marginEnd="8dp"
-                android:minWidth="0dp"
-                android:text="EMAIL / MẬT KHẨU"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp" />
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/google_sign_in"
+                android:id="@+id/youtube_connect"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
                 android:minWidth="0dp"
-                android:text="GOOGLE"
+                android:text="KẾT NỐI"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp" />
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/google_sign_out"
+                android:id="@+id/youtube_reconnect"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
                 android:minWidth="0dp"
-                android:text="ĐĂNG XUẤT"
+                android:text="KẾT NỐI LẠI"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:visibility="gone" />
         </LinearLayout>
         <com.google.android.material.button.MaterialButton android:id="@+id/enter_camera"
