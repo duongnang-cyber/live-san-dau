@@ -1,13 +1,13 @@
-# Live Sân Đấu — 1.28.0 • YouTube không cần nhập Stream Key
+# Live Sân Đấu — 1.30.0 • Không đăng nhập Google/Facebook
 
-**Trạng thái: người dùng đã kết nối kênh YouTube chỉ cần vào camera, bấm LIVE và xác nhận tiêu đề.**
+**Trạng thái: đã gỡ toàn bộ đăng nhập Google/YouTube và không tích hợp Facebook Login.**
 
-- Ẩn hoàn toàn ô Server URL và Stream Key trong phiên YouTube; thông tin nhạy cảm chỉ được giữ nội bộ trong phiên hiện tại.
-- Bấm **LIVE** khi chưa có phiên sẽ tự mở hộp tạo buổi phát, điền sẵn tiêu đề theo môn và thời gian, mặc định **Công khai**.
-- Bấm **PHÁT NGAY** để ứng dụng tự tạo broadcast + stream, liên kết chúng, lấy RTMPS/stream key từ YouTube rồi bắt đầu phát.
-- Nút **Chọn buổi phát có sẵn (tùy chọn)** vẫn giữ cho người dùng nâng cao nhưng không bắt buộc.
-- Facebook và URL khác vẫn dùng Stream Key thủ công vì chưa tích hợp OAuth/API tương ứng.
-- Tăng `versionCode` lên 29 và `versionName` lên `1.28.0`.
+- Màn hình đầu chỉ chọn môn và nơi phát, không còn nút kết nối tài khoản.
+- YouTube, Facebook và URL khác đều dùng **Stream Key nhập trực tiếp** trong màn hình camera.
+- YouTube/Facebook vẫn điền sẵn Server URL; URL khác cho nhập cả Server URL và Stream Key.
+- Stream Key chỉ giữ trong bộ nhớ phiên hiện tại, không lưu lại sau khi rời phiên.
+- Giữ nguyên camera, bảng điểm, điều khiển tay 1/tay 2 pickleball, replay, chữ chạy, zoom và tùy chỉnh overlay.
+- Tăng `versionCode` lên 31 và `versionName` lên `1.30.0`.
 
 ---
 

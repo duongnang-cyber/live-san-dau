@@ -16,8 +16,8 @@ android {
         applicationId = "com.vangnang.livecamera"
         minSdk = 24
         targetSdk = 35
-        versionCode = 30
-        versionName = "1.29.0"
+        versionCode = 31
+        versionName = "1.30.0"
     }
 
     buildFeatures {
@@ -42,8 +42,6 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("com.google.android.gms:play-services-auth:22.0.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("com.github.pedroSG94.RootEncoder:library:2.7.2")
 }
 

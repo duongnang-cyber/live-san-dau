@@ -5,28 +5,23 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-class YouTubeAuthorizationUiTest {
-    @Test fun setupUsesYouTubeAuthorizationWithoutEmailAccounts() {
+class NoSocialLoginUiTest {
+    @Test fun setupAndRuntimeContainNoGoogleOrFacebookLogin() {
         val setup = File("src/main/res/layout/view_setup.xml").readText()
         val activity = File("src/main/res/layout/activity_main.xml").readText()
-        val dialog = File("src/main/res/layout/dialog_youtube_live.xml").readText()
-        val controller = File("src/main/java/com/vangnang/youtubelive/YouTubeLiveController.kt").readText()
+        val main = File("src/main/java/com/vangnang/youtubelive/MainActivity.kt").readText()
         val gradle = File("build.gradle.kts").readText()
 
-        assertTrue(setup.contains("youtube_connect"))
-        assertTrue(setup.contains("youtube_account_status"))
-        assertTrue(activity.contains("youtube_create_live"))
-        assertTrue(dialog.contains("youtube_broadcast"))
-        assertTrue(dialog.contains("youtube_title"))
-        assertTrue(dialog.contains("youtube_privacy"))
-        assertTrue(controller.contains("youtube.force-ssl"))
-        assertTrue(controller.contains("liveBroadcasts"))
-        assertTrue(controller.contains("liveStreams"))
-        assertTrue(controller.contains("streamName"))
-        assertTrue(controller.contains("?part=id,cdn&id="))
-        assertFalse(controller.contains("?part=id,cdn&id=\${encode(streamId)}&mine=true"))
-        assertTrue(gradle.contains("play-services-auth"))
-        assertFalse(setup.contains("email_sign_in"))
+        assertFalse(setup.contains("youtube_connect"))
+        assertFalse(setup.contains("youtube_account_status"))
+        assertFalse(activity.contains("youtube_create_live"))
+        assertFalse(main.contains("AuthorizationResult"))
+        assertFalse(main.contains("requestYouTubeAuthorization"))
+        assertFalse(main.contains("prepareYouTubeLiveSession"))
+        assertFalse(gradle.contains("play-services-auth"))
         assertFalse(gradle.contains("firebase-auth"))
+        assertFalse(gradle.contains("facebook-android-sdk"))
+        assertTrue(activity.contains("@+id/stream_key"))
+        assertFalse(setup.contains("email_sign_in"))
     }
 }
