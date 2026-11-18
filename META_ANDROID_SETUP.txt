@@ -1,0 +1,12 @@
+Ứng dụng Meta mới: 1080265937925580
+
+Cài đặt ứng dụng > Thông tin cơ bản > Thêm nền tảng > Android
+Tên gói: com.vangnang.livecamera
+Tên lớp hoạt động: com.vangnang.youtubelive.MainActivity
+Key Hash: 5o9f/aY0Q+EyvXZ/IOobiXq8hpM=
+
+Đã chọn Truy cập API Video trực tiếp và Quản lý mọi thứ trên Trang.
+Cần kiểm tra quyền pages_show_list, pages_read_engagement, pages_manage_posts trong bảng điều khiển Meta.
+
+Thử APK bằng tài khoản có vai trò phù hợp trong ứng dụng Meta: đăng nhập, cấp quyền, chọn đúng Fanpage, nhập tiêu đề rồi xác nhận phát. Kiểm tra hình và âm thanh trên Fanpage; kết thúc phát trong ứng dụng.
+Việc biên dịch thành công không chứng minh Meta đã cấp quyền hoặc phát live thành công.

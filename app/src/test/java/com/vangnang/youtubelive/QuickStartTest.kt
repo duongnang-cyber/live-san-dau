@@ -40,4 +40,20 @@ class QuickStartTest {
     @Test fun continueSameSportPreservesPeriod() {
         assertEquals("HIỆP 2", setupScore(ScoreState(period = "HIỆP 2"), Sport.FOOTBALL, false, 0).period)
     }
+    @Test fun customSportUsesItsOwnNameAndTheSelectedProfile() {
+        val badminton = SetupSport("badminton", "Cầu lông", Sport.VOLLEYBALL)
+        val selected = setupScore(ScoreState(scoreA = 4), badminton.profile, false, 0, badminton)
+        assertEquals("Cầu lông", selected.sportTitle)
+        assertEquals("SET 1", selected.period)
+        assertTrue(sportControls(selected.sport).sets)
+        assertEquals(0, selected.scoreA)
+        val renamed = badminton.copy(title = "Cầu lông CLB")
+        val resumed = setupScore(selected.copy(scoreA = 12), renamed.profile, false, 0, renamed)
+        assertEquals(12, resumed.scoreA)
+        assertEquals("Cầu lông CLB", resumed.sportTitle)
+        val builtIn = setupScore(resumed, Sport.VOLLEYBALL, false, 0)
+        assertNull(builtIn.customSportId)
+        assertEquals("Bóng chuyền", builtIn.sportTitle)
+        assertEquals(0, builtIn.scoreA)
+    }
 }

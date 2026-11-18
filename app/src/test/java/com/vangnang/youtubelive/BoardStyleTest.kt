@@ -33,7 +33,8 @@ class BoardStyleTest {
             val labels = BroadcastDesign.board(ScoreState(visible = true, teamA = "HOME", teamB = "AWAY", scoreA = 2, scoreB = 1).withBoardStyle(style), 0).filterIsInstance<Mark.Caption>()
             val a = labels.single { it.value == "2" }; val b = labels.single { it.value == "1" }
             assertTrue(labels.single { it.value == "HOME" }.x < a.x)
-            assertTrue(a.x < b.x && b.x - a.x <= 80f)
+            // Readability is measured in video coordinates after the default overlay scale.
+            assertTrue(a.x < b.x && (b.x - a.x) * ScoreState().placement().scale <= 80f)
             assertTrue(b.x < labels.single { it.value == "AWAY" }.x)
         }
     }

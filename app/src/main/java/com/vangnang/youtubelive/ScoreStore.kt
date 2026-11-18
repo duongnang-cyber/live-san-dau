@@ -7,11 +7,14 @@ class ScoreStore(private val prefs: SharedPreferences) {
     fun save(s: ScoreState, now: Long) {
         val o = JSONObject().apply {
             put("sport", s.sport.name); put("a", s.teamA); put("b", s.teamB); put("event", s.event)
+            put("customSportId", s.customSportId); put("customSportTitle", s.customSportTitle)
             put("sa", s.scoreA); put("sb", s.scoreB); put("setsA", s.setsA); put("setsB", s.setsB)
             put("period", s.period); put("serving", s.serving); put("server", s.serverNumber)
             put("visible", s.visible); put("break", s.intermission); put("breakTitle", s.breakTitle)
             put("elapsed", s.elapsed(now)); put("tickerVisible", s.tickerVisible)
             put("tickerText", s.tickerText); put("speed", s.tickerSpeed)
+            put("logoVisible", s.logoVisible); put("logoText", s.logoText)
+            put("logoX", s.logoX); put("logoY", s.logoY); put("logoWidth", s.logoWidth); put("logoOpacity", s.logoOpacity)
             put("footballStyle", s.footballStyle.name); put("volleyballStyle", s.volleyballStyle.name)
             put("pickleballStyle", s.pickleballStyle.name); put("quickScores", s.quickScoreControls)
             listOf("footballLayout" to s.footballPlacement, "volleyballLayout" to s.volleyballPlacement,
@@ -19,6 +22,7 @@ class ScoreStore(private val prefs: SharedPreferences) {
                 "tickerLayout" to s.tickerPlacement, "quickControlsLayout" to s.quickControlsPlacement).forEach { (key, value) ->
                 value?.let { put(key, JSONObject().put("x", it.x).put("y", it.y).put("scale", it.scale)) }
             }
+            put("jerseyBar", s.jerseyBar.name); put("jerseyA", s.jerseyA.name); put("jerseyB", s.jerseyB.name)
             put("boardColors", writeColors(s.boardColors))
             put("tickerColors", writeColors(s.tickerColors))
         }
@@ -38,6 +42,11 @@ class ScoreStore(private val prefs: SharedPreferences) {
             elapsedMs = o.optLong("elapsed").coerceIn(0, ScoreState.MAX_CLOCK_MS), runningSince = null,
             tickerVisible = o.optBoolean("tickerVisible"), tickerText = o.optString("tickerText").take(500),
             tickerLabel = "", tickerSpeed = o.optInt("speed", 90).coerceIn(30, 200),
+            logoVisible = o.optBoolean("logoVisible"), logoText = o.optString("logoText").take(80),
+            logoX = o.optDouble("logoX", 1050.0).toFloat().coerceIn(0f, 1200f),
+            logoY = o.optDouble("logoY", 35.0).toFloat().coerceIn(0f, 680f),
+            logoWidth = o.optDouble("logoWidth", 180.0).toFloat().coerceIn(40f, 500f),
+            logoOpacity = o.optDouble("logoOpacity", 0.8).toFloat().coerceIn(0f, 1f),
             footballPlacement = readPlacement(o, "footballLayout"), volleyballPlacement = readPlacement(o, "volleyballLayout"),
             pickleballPlacement = readPlacement(o, "pickleballLayout"), breakPlacement = readPlacement(o, "breakLayout"),
             tickerPlacement = readPlacement(o, "tickerLayout"), quickControlsPlacement = readPlacement(o, "quickControlsLayout"),
@@ -45,7 +54,12 @@ class ScoreStore(private val prefs: SharedPreferences) {
             volleyballStyle = boardStyleFromName(o.optString("volleyballStyle")),
             pickleballStyle = boardStyleFromName(o.optString("pickleballStyle")),
             boardColors = readColors(o, "boardColors"), tickerColors = readColors(o, "tickerColors"),
-            quickScoreControls = o.optBoolean("quickScores", true)
+            jerseyBar = JerseyBar.entries.firstOrNull { it.name == o.optString("jerseyBar") } ?: JerseyBar.VERTICAL,
+            jerseyA = JerseyColor.entries.firstOrNull { it.name == o.optString("jerseyA") } ?: JerseyColor.RED,
+            jerseyB = JerseyColor.entries.firstOrNull { it.name == o.optString("jerseyB") } ?: JerseyColor.BLUE,
+            quickScoreControls = o.optBoolean("quickScores", true),
+            customSportId = o.optString("customSportId").takeIf { it.isNotBlank() },
+            customSportTitle = o.optString("customSportTitle").take(60).takeIf { it.isNotBlank() }
         )
     } catch (_: Exception) { ScoreState() }
     private fun readPlacement(o: JSONObject, key: String): BoardPlacement? = o.optJSONObject(key)?.let {

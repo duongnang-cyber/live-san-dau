@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /** One GL pass shared by preview and encoder. UI views/stream keys never enter this pass. */
-class ScoreOverlayFilter(private val snapshot: () -> ScoreState) : BaseFilterRender() {
+class ScoreOverlayFilter(private val snapshot: () -> ScoreState, private val logo: () -> Bitmap?) : BaseFilterRender() {
     private val vertices = ByteBuffer.allocateDirect(16 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply {
         put(floatArrayOf(-1f, -1f, 0f, 0f, 1f, -1f, 1f, 0f, -1f, 1f, 0f, 1f, 1f, 1f, 1f, 1f)); position(0)
     }
@@ -32,6 +32,7 @@ class ScoreOverlayFilter(private val snapshot: () -> ScoreState) : BaseFilterRen
     private var showTickerUniform = -1
     private var last: ScoreState? = null
     private var lastBoard: ScoreState? = null
+    private var lastLogo: Bitmap? = null
     private var boardAt = 0L
     private var lastSecond = -1L
     private var tickerAt = 0L
@@ -63,11 +64,13 @@ class ScoreOverlayFilter(private val snapshot: () -> ScoreState) : BaseFilterRen
     }
     override fun drawFilter() {
         val state = snapshot()
+        val image = logo()
         val now = SystemClock.elapsedRealtime()
         val second = state.elapsed(now) / 1000
         // Drag events can arrive faster than video frames. Limit bitmap uploads, without losing the last move.
-        if ((lastBoard != state || second != lastSecond) && (lastBoard == null || now - boardAt >= 32)) {
-            painter.board(boardCanvas!!, state, now)
+        if ((lastBoard != state || lastLogo !== image || second != lastSecond) && (lastBoard == null || now - boardAt >= 32)) {
+            painter.board(boardCanvas!!, state, now, image)
+            lastLogo = image
             GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0])
             GLUtils.texSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, board!!)

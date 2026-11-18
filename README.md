@@ -1,13 +1,96 @@
-# Live Sân Đấu — 1.30.0 • Không đăng nhập Google/Facebook
+# Cập nhật v1.32.2
 
-**Trạng thái: đã gỡ toàn bộ đăng nhập Google/YouTube và không tích hợp Facebook Login.**
+Bỏ Facebook cá nhân (key). Chọn Facebook → Đăng nhập → Trang cá nhân hoặc Fanpage trước khi mở hộp thoại Facebook. Sửa yêu cầu đăng nhập chỉ có public_profile của v1.32.1. Xem UPGRADE-1.32.2.md. Giữ thanh màu áo bóng đá.
+
+Chưa kiểm thử livestream thực tế bằng tài khoản người dùng.
+
+---
+
+# Cập nhật v1.32.1 — chọn nơi phát Facebook sau đăng nhập
+
+- Chọn trang cá nhân hoặc Fanpage; yêu cầu quyền riêng cho từng lựa chọn.
+- Trang cá nhân cần `publish_video` và quyền truy cập Live Video API được Meta cho phép. Xem `UPGRADE-1.32.1.md`.
+- Có chọn đối tượng xem; mặc định Chỉ mình tôi để thử nghiệm.
+- Giữ màu áo dạng thanh cạnh tên đội và cách nhập URL/key.
+- Kiểm tra: assembleDebug thành công; 228 unit tests đạt, 0 lỗi. versionCode 37; giữ chữ ký APK cũ.
+- Chưa kiểm thử đăng nhập/phát trực tiếp trên thiết bị hoặc tài khoản Meta thật; build thành công không chứng minh Meta cấp quyền.
+
+---
+
+## 1.32.0 — Màu áo bóng đá và Facebook cá nhân (key)
+
+Validation: assembleDebug succeeded; 224 unit tests passed, no failures/errors/skips. APK versionCode 36, existing signing certificate verified.
+
+- Chọn màu áo A/B bằng vạch dọc hoặc ngang; lưu tự động, màu đi theo đội khi đổi bên.
+- Chế độ Facebook cá nhân nhập URL/key thủ công, chỉ khi Facebook cấp khóa cho tài khoản.
+- Xem UPGRADE-1.32.0.md để sử dụng. Chưa kiểm thử phát Facebook trên thiết bị thật.
+
+## 1.31.3 — Facebook permission verification
+
+Validation: assembleDebug produced versionCode 35 / versionName 1.31.3; 219 unit tests passed, zero failures/errors/skips. APK signature verified against the existing development signing certificate.
+
+- Verify current grants with GET me/permissions before loading Pages; do not gate Page access on the SDK cached public_profile entry.
+- Require all three Page grants (pages_show_list, pages_read_engagement, pages_manage_posts). Missing/declined/expired grants show a persistent dialog and an explicit re-request button.
+- Network/API verification failures offer retry and are not reported as missing permissions.
+- Keep portrait Facebook login from 1.31.2. SDK 18.0.3 LoginManager defaults to auth_type=rerequest for re-requesting permissions.
+- No access tokens or stream keys are shown in permission diagnostics. Existing Page selection and explicit live confirmation remain required.
+- Actual Facebook consent and live broadcast need verification on a signed-in device.
+
+# Live Sân Đấu 1.31.2 — màn hình đăng nhập Facebook dọc
+
+- Tách FacebookLoginActivity nền trắng, không trong suốt, khóa dọc để hộp thoại cấp quyền có đủ chiều cao.
+- Chỉ gọi SDK sau khi cửa sổ dọc có focus; lưu trạng thái để không mở lại luồng đăng nhập khi activity được tạo lại.
+- FacebookActivity cũng dùng giao diện dọc không trong suốt. Camera MainActivity giữ ngang.
+- Chuyển kết quả thành công/hủy/lỗi về camera; chỉ chọn Trang khi token có đủ quyền.
+- Giữ App ID 1080265937925580, tên gói và khóa ký hiện có. VersionCode 34.
+- Build assembleDebug và 215 unit tests thành công; chữ ký APK giữ nguyên.
+- Cần kiểm tra giao diện cấp quyền trên điện thoại thật; build/unit tests không xác nhận quyền Meta hay phát live thành công.
+
+# Update 1.31.1
+
+Meta App ID: 1080265937925580. Client Token updated. VersionCode 33.
+assembleDebug and testDebugUnitTest succeeded, 215 tests passed. Real device Facebook login/live verification pending.
+Register Android package com.vangnang.livecamera, activity com.vangnang.youtubelive.MainActivity, key hash 5o9f/aY0Q+EyvXZ/IOobiXq8hpM= on the new Meta app.
+
+# Live Sân Đấu 1.31 — Facebook Fanpage Live (đã build APK; chưa kiểm thử thiết bị)
+
+Luồng đã thêm: đăng nhập Facebook → cấp quyền Trang → chọn Fanpage (có phân trang) → vào camera → LIVE → nhập tiêu đề → xác nhận PHÁT LIVE. Ứng dụng yêu cầu API tạo phiên, sử dụng secure_stream_url trong bộ nhớ và yêu cầu kết thúc phiên khi dừng hoặc ra nền. Không hỗ trợ tự tạo live trên trang cá nhân.
+
+## Trạng thái và điều kiện thử
+
+- Đã cấu hình Client Token của Meta App 1403078937922129 trong gradle.properties. Đây không phải App Secret.
+- App phải có quyền pages_show_list, pages_read_engagement, pages_manage_posts phù hợp với trường hợp sử dụng Meta. Các quyền này và điều kiện Live của Fanpage chưa được xác minh bằng tài khoản thật.
+- SDK dùng facebook-login:18.0.3. Quyền Facebook và phát trực tiếp thực tế cần được kiểm tra trên điện thoại bằng tài khoản được phép của ứng dụng Meta.
+- Key Hash thử nghiệm: 5o9f/aY0Q+EyvXZ/IOobiXq8hpM=. signing/dev-debug.keystore là khóa thử nghiệm cũ, không dùng làm khóa phát hành.
+
+## Build
+
+Đã build thành công ngày 20/09/2026: assembleDebug và 215/215 unit tests đạt. Đã kiểm tra chữ ký APK khớp Key Hash bên dưới. Chưa thử đăng nhập, cấp quyền hoặc phát trực tiếp bằng tài khoản Facebook thật.
+
+Java 17, Android SDK 35, Gradle 8.13; chạy `gradle :app:assembleDebug :app:testDebugUnitTest`. Workflow trong .github/workflows/build-apk.yml đã nhận Client Token từ secret. Chưa đẩy thay đổi lên GitHub và chưa chạy Actions.
+
+## Kiểm thử bắt buộc
+
+1. Hủy đăng nhập hoặc từ chối quyền: không tự mở lại hộp thoại cấp quyền.
+2. Danh sách Trang rỗng hoặc nhiều trang: thông báo rõ và cho chọn Trang, không tự chọn Trang đầu.
+3. Xác nhận PHÁT LIVE: chỉ gửi một yêu cầu tạo phiên; kiểm tra thực tế hình, âm thanh, bảng điểm trên Fanpage.
+4. Dừng, mất mạng, quay về màn hình đầu hoặc ra nền trong lúc tạo phiên: yêu cầu kết thúc phiên đã tạo, không tự phát sau khi quay lại.
+5. Kiểm tra phiên đã kết thúc trong Facebook; khi API kết thúc thất bại có thông báo để kiểm tra thủ công.
+
+---
+Lịch sử phiên bản (các mô tả cũ dưới đây không phản ánh đầy đủ nhánh Facebook mới):
+
+# Live Sân Đấu — 1.31.0 • Đăng nhập Facebook
+
+**Trạng thái: đã tích hợp Facebook Login cho Android; không yêu cầu email và không tích hợp đăng nhập Google/YouTube.**
 
 - Màn hình đầu chỉ chọn môn và nơi phát, không còn nút kết nối tài khoản.
-- YouTube, Facebook và URL khác đều dùng **Stream Key nhập trực tiếp** trong màn hình camera.
+- Facebook Login mở ứng dụng Facebook (nếu có) và xin quyền `public_profile`; YouTube và URL khác không có bước đăng nhập.
+- Việc tự tạo phiên Facebook Live cần thêm quyền Trang và được Meta xét duyệt; cho tới khi được cấp, Facebook vẫn dùng **Stream Key nhập trực tiếp** trong màn hình camera.
 - YouTube/Facebook vẫn điền sẵn Server URL; URL khác cho nhập cả Server URL và Stream Key.
 - Stream Key chỉ giữ trong bộ nhớ phiên hiện tại, không lưu lại sau khi rời phiên.
 - Giữ nguyên camera, bảng điểm, điều khiển tay 1/tay 2 pickleball, replay, chữ chạy, zoom và tùy chỉnh overlay.
-- Tăng `versionCode` lên 31 và `versionName` lên `1.30.0`.
+- Tăng `versionCode` lên 32 và `versionName` lên `1.31.0`.
 
 ---
 

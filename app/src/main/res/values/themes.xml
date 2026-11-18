@@ -16,4 +16,12 @@
         <item name="colorControlNormal">@color/field_label</item>
         <item name="colorControlActivated">@color/field_label</item>
     </style>
+    <!-- Opaque portrait host: Facebook must not inherit the landscape camera window. -->
+    <style name="Theme.FacebookLogin" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+    </style>
 </resources>

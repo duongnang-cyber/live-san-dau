@@ -18,6 +18,9 @@ data class ScoreState(
     val elapsedMs: Long = 0, val runningSince: Long? = null,
     val tickerVisible: Boolean = false, val tickerText: String = "",
     val tickerLabel: String = "", val tickerSpeed: Int = 90,
+    val logoVisible: Boolean = false, val logoText: String = "",
+    val logoX: Float = 1050f, val logoY: Float = 35f, val logoWidth: Float = 180f,
+    val logoOpacity: Float = 0.8f,
     val footballPlacement: BoardPlacement? = null,
     val volleyballPlacement: BoardPlacement? = null,
     val pickleballPlacement: BoardPlacement? = null,
@@ -29,8 +32,14 @@ data class ScoreState(
     val pickleballStyle: BoardStyle = BoardStyle.ARENA,
     val boardColors: OverlayColors = OverlayColors(),
     val tickerColors: OverlayColors = OverlayColors(),
-    val quickScoreControls: Boolean = true
+    val jerseyBar: JerseyBar = JerseyBar.VERTICAL,
+    val jerseyA: JerseyColor = JerseyColor.RED, val jerseyB: JerseyColor = JerseyColor.BLUE,
+    val quickScoreControls: Boolean = true,
+    val customSportId: String? = null,
+    val customSportTitle: String? = null
 ) {
+    val sportTitle: String get() = customSportTitle ?: sport.title
+
     fun elapsed(now: Long): Long = (elapsedMs + (runningSince?.let { (now - it).coerceAtLeast(0) } ?: 0)).coerceIn(0, MAX_CLOCK_MS)
     fun clock(now: Long): String {
         val seconds = elapsed(now) / 1000
@@ -51,7 +60,7 @@ data class ScoreState(
         else copy(serving = selectedTeam, serverNumber = selectedServer)
     }
     fun showBreak(show: Boolean, now: Long): ScoreState = pause(now).copy(intermission = show, visible = if (show) true else visible)
-    fun swapTeams() = copy(teamA = teamB, teamB = teamA, scoreA = scoreB, scoreB = scoreA, setsA = setsB, setsB = setsA, serving = when (serving) { 1 -> 2; 2 -> 1; else -> 0 })
+    fun swapTeams() = copy(jerseyA = jerseyB, jerseyB = jerseyA, teamA = teamB, teamB = teamA, scoreA = scoreB, scoreB = scoreA, setsA = setsB, setsB = setsA, serving = when (serving) { 1 -> 2; 2 -> 1; else -> 0 })
     fun resetMatch() = copy(scoreA = 0, scoreB = 0, setsA = 0, setsB = 0, elapsedMs = 0, runningSince = null, intermission = false, serving = 0, serverNumber = 1, period = if (sport == Sport.FOOTBALL) "HIỆP 1" else "SET 1")
     companion object { const val MAX_CLOCK_MS = 59_999_000L }
 }

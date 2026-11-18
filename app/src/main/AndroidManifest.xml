@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -12,12 +12,47 @@
         android:name="android.hardware.microphone"
         android:required="true" />
 
+    <queries>
+        <package android:name="com.facebook.katana" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_live"
         android:label="Live Sân Đấu"
         android:supportsRtl="true"
         android:theme="@style/Theme.YouTubeLive">
+
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id" />
+
+        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="@string/facebook_client_token" />
+        <meta-data android:name="com.facebook.sdk.AutoLogAppEventsEnabled" android:value="false" />
+        <meta-data android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled" android:value="false" />
+        <activity
+            android:name="com.facebook.FacebookActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.FacebookLogin"
+            tools:replace="android:theme"
+            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+            android:exported="false" />
+
+        <activity
+            android:name="com.facebook.CustomTabActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/fb_login_protocol_scheme" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".FacebookLoginActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.FacebookLogin" />
 
         <activity
             android:name=".MainActivity"

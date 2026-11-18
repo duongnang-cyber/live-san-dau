@@ -16,12 +16,18 @@ android {
         applicationId = "com.vangnang.livecamera"
         minSdk = 24
         targetSdk = 35
-        versionCode = 31
-        versionName = "1.30.0"
+        resValue("string", "facebook_client_token", providers.gradleProperty("FACEBOOK_CLIENT_TOKEN").orElse("").get())
+        versionCode = 47
+        versionName = "1.40.0"
     }
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
+    }
+
+    buildTypes {
+        getByName("debug") { signingConfig = null }
     }
 
     compileOptions {
@@ -43,6 +49,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.github.pedroSG94.RootEncoder:library:2.7.2")
+    implementation("com.facebook.android:facebook-login:18.0.3")
 }
 
 // Ship the actual dependency inventory and embedded notices without stripping upstream assets.
@@ -88,3 +95,12 @@ val collectRuntimeNotices by tasks.registering {
 }
 android.sourceSets.getByName("main").assets.srcDir(runtimeNoticesDir)
 tasks.named("preBuild").configure { dependsOn(collectRuntimeNotices) }
+
+// Prevent distributing a build that cannot initialize Facebook Login.
+tasks.named("preBuild").configure {
+    doFirst {
+        check(!providers.gradleProperty("FACEBOOK_CLIENT_TOKEN").orNull.isNullOrBlank()) {
+            "Missing FACEBOOK_CLIENT_TOKEN. Set it in user Gradle properties; never use the App Secret."
+        }
+    }
+}

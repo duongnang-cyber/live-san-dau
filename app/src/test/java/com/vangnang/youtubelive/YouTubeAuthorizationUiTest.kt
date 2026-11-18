@@ -5,8 +5,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-class NoSocialLoginUiTest {
-    @Test fun setupAndRuntimeContainNoGoogleOrFacebookLogin() {
+class FacebookLoginUiTest {
+    @Test fun setupContainsFacebookLoginButNoGoogleLogin() {
         val setup = File("src/main/res/layout/view_setup.xml").readText()
         val activity = File("src/main/res/layout/activity_main.xml").readText()
         val main = File("src/main/java/com/vangnang/youtubelive/MainActivity.kt").readText()
@@ -20,7 +20,9 @@ class NoSocialLoginUiTest {
         assertFalse(main.contains("prepareYouTubeLiveSession"))
         assertFalse(gradle.contains("play-services-auth"))
         assertFalse(gradle.contains("firebase-auth"))
-        assertFalse(gradle.contains("facebook-android-sdk"))
+        assertTrue(gradle.contains("facebook-login"))
+        assertTrue(setup.contains("facebook_login"))
+        assertTrue(main.contains("LoginManager"))
         assertTrue(activity.contains("@+id/stream_key"))
         assertFalse(setup.contains("email_sign_in"))
     }

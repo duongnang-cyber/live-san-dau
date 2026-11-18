@@ -1,6 +1,7 @@
 package com.vangnang.youtubelive
 
 import android.graphics.*
+import kotlin.math.roundToInt
 
 class ScorePainter {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -43,7 +44,7 @@ class ScorePainter {
             }
         }
     }
-    fun board(c: Canvas, s: ScoreState, now: Long) {
+    fun board(c: Canvas, s: ScoreState, now: Long, logoImage: Bitmap? = null) {
         c.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         if (!s.visible) return
         val marks = BroadcastDesign.board(s, now)
@@ -57,6 +58,27 @@ class ScorePainter {
         c.translate(-bounds.left, -bounds.top)
         render(c, if (s.intermission) marks.drop(1) else marks)
         c.restore()
+        if (s.logoVisible && logoImage != null) {
+            val x = s.logoX.coerceIn(0f, 1200f)
+            val y = s.logoY.coerceIn(0f, 680f)
+            val availableWidth = (1280f - x).coerceAtMost(s.logoWidth.coerceIn(40f, 500f))
+            val scale = minOf(availableWidth / logoImage.width, (720f - y) / logoImage.height)
+            paint.shader = null
+            paint.style = Paint.Style.FILL
+            paint.alpha = (255f * s.logoOpacity.coerceIn(0f, 1f)).roundToInt()
+            paint.isFilterBitmap = true
+            c.drawBitmap(logoImage, null, RectF(x, y, x + logoImage.width * scale, y + logoImage.height * scale), paint)
+        } else if (s.logoVisible && s.logoText.isNotBlank()) {
+            paint.shader = null; paint.style = Paint.Style.FILL
+            paint.color = Color.argb((255f * s.logoOpacity.coerceIn(0f, 1f)).roundToInt(), 255, 255, 255)
+            paint.typeface = body; paint.textAlign = Paint.Align.LEFT
+            val size = 24f
+            val fitted = fitBroadcastText(s.logoText, size, 10f, s.logoWidth.coerceIn(40f, 500f)) { value, textSize ->
+                paint.textSize = textSize; paint.measureText(value)
+            }
+            paint.textSize = fitted.size
+            c.drawText(fitted.text, s.logoX.coerceIn(0f, 1200f), (s.logoY + fitted.size).coerceIn(fitted.size, 719f), paint)
+        }
     }
     fun ticker(c: Canvas, s: ScoreState, elapsed: Long) {
         c.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)

@@ -18,7 +18,8 @@ class ScorePanel(
     private val activity: AppCompatActivity,
     private val current: () -> ScoreState,
     private val change: ((ScoreState) -> ScoreState) -> Unit,
-    private val undo: () -> Unit
+    private val undo: () -> Unit,
+    private val eventEditable: () -> Boolean = { true }
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var dialog: Dialog
@@ -68,10 +69,10 @@ class ScorePanel(
     fun show() {
         val initial = current()
         val controls = sportControls(initial.sport)
-        label("${initial.sport.title} • CÀI ĐẶT", size = 20f)
+        label("${initial.sportTitle} • CÀI ĐẶT", size = 20f)
         label("Cập nhật được khi đang live. Chỉ đồ họa xuất hiện trong video, không có các nút điều khiển này.", size = 13f)
         val visible = toggle("Hiện bảng tỉ số", initial.visible) { value -> change { it.copy(visible = value, intermission = if (value) it.intermission else false) } }
-        label("Mẫu bảng tỉ số ${initial.sport.title}")
+        label("Mẫu bảng tỉ số ${initial.sportTitle}")
         val style = choices(BoardStyle.entries.map { it.title }, initial.boardStyle().ordinal) { index ->
             if (current().boardStyle().ordinal != index) change { it.withBoardStyle(BoardStyle.entries[index]) }
         }
@@ -89,6 +90,33 @@ class ScorePanel(
             change { it.copy(boardColors = it.boardColors.copy(background = OverlayColor.entries[index].argb)) }
         }
         label("Chọn Mặc định theo mẫu để khôi phục màu thiết kế ban đầu.", size = 13f)
+        var jerseyMode: Spinner? = null
+        var jerseyA: Spinner? = null
+        var jerseyB: Spinner? = null
+        var swatchA: TextView? = null
+        var swatchB: TextView? = null
+        fun swatch(label: TextView?, color: Int) {
+            label?.setCompoundDrawables(android.graphics.drawable.GradientDrawable().apply {
+                setColor(color); setStroke(dp(1), 0xFF87929B.toInt()); setBounds(0, 0, dp(24), dp(16))
+            }, null, null, null)
+            label?.compoundDrawablePadding = dp(8)
+        }
+        if (initial.sport == Sport.FOOTBALL) {
+            label("MÀU ÁO HAI ĐỘI", size = 18f)
+            jerseyMode = choices(JerseyBar.entries.map { it.title }, initial.jerseyBar.ordinal) { index ->
+                if (current().jerseyBar.ordinal != index) change { it.copy(jerseyBar = JerseyBar.entries[index]) }
+            }
+            swatchA = label("Màu áo đội A")
+            jerseyA = choices(JerseyColor.entries.map { it.title }, initial.jerseyA.ordinal) { index ->
+                if (current().jerseyA.ordinal != index) change { it.copy(jerseyA = JerseyColor.entries[index]) }
+            }
+            swatchB = label("Màu áo đội B")
+            jerseyB = choices(JerseyColor.entries.map { it.title }, initial.jerseyB.ordinal) { index ->
+                if (current().jerseyB.ordinal != index) change { it.copy(jerseyB = JerseyColor.entries[index]) }
+            }
+            swatch(swatchA, initial.jerseyA.argb); swatch(swatchB, initial.jerseyB.argb)
+            label("Màu được lưu tự động và đi theo đội khi đổi bên.", size = 13f)
+        }
         val quickControls = if (controls.sets) toggle("Hiện nút ± điểm trên màn hình", initial.quickScoreControls) { value ->
             change { it.copy(quickScoreControls = value) }
         } else null
@@ -143,7 +171,18 @@ class ScorePanel(
         val nameA = input("Tên đội / người chơi A", initial.teamA, 40)
         val nameB = input("Tên đội / người chơi B", initial.teamB, 40)
         val event = input("Tên giải / nội dung giới thiệu", initial.event, 80)
-        button("Cập nhật tên đội / giải") { change { it.copy(teamA = nameA.text.toString().trim().ifBlank { "ĐỘI A" }, teamB = nameB.text.toString().trim().ifBlank { "ĐỘI B" }, event = event.text.toString().trim()) } }
+        val eventNote = label("", size = 13f)
+        fun refreshEventLock() {
+            val editable = eventEditable()
+            event.isEnabled = editable
+            eventNote.text = if (editable) "Tên giải có thể chỉnh trên máy." else "Tên giải do website quản lý; máy chưa có bản quyền không được sửa."
+        }
+        refreshEventLock()
+        button("Cập nhật tên đội / giải") {
+            if (!eventEditable()) {
+                change { it.copy(teamA = nameA.text.toString().trim().ifBlank { "ĐỘI A" }, teamB = nameB.text.toString().trim().ifBlank { "ĐỘI B" }) }
+            } else change { it.copy(teamA = nameA.text.toString().trim().ifBlank { "ĐỘI A" }, teamB = nameB.text.toString().trim().ifBlank { "ĐỘI B" }, event = event.text.toString().trim()) }
+        }
 
         label("CHỮ CHẠY QUẢNG CÁO / GIỚI THIỆU", size = 18f)
         val tickerOn = toggle("Bật chữ chạy", initial.tickerVisible) { value -> change { it.copy(tickerVisible = value) } }
@@ -189,12 +228,18 @@ class ScorePanel(
                 if (lastUiState.teamA != s.teamA) nameA.setText(s.teamA)
                 if (lastUiState.teamB != s.teamB) nameB.setText(s.teamB)
                 if (lastUiState.event != s.event) event.setText(s.event)
+                refreshEventLock()
                 if (lastUiState.period != s.period) period.setText(s.period)
                 if (lastUiState.breakTitle != s.breakTitle) breakTitle.setText(s.breakTitle)
                 if (lastUiState.tickerText != s.tickerText) ticker.setText(s.tickerText)
                 if (lastUiState.elapsedMs != s.elapsedMs && !clockInput.hasFocus()) clockInput.setText(s.clock(SystemClock.elapsedRealtime()))
                 visible.isChecked = s.visible; intermission.isChecked = s.intermission; tickerOn.isChecked = s.tickerVisible
                 if (style.selectedItemPosition != s.boardStyle().ordinal) style.setSelection(s.boardStyle().ordinal)
+                jerseyMode?.let { if (it.selectedItemPosition != s.jerseyBar.ordinal) it.setSelection(s.jerseyBar.ordinal) }
+                jerseyA?.let { if (it.selectedItemPosition != s.jerseyA.ordinal) it.setSelection(s.jerseyA.ordinal) }
+                jerseyB?.let { if (it.selectedItemPosition != s.jerseyB.ordinal) it.setSelection(s.jerseyB.ordinal) }
+                if (lastUiState.jerseyA != s.jerseyA) swatch(swatchA, s.jerseyA.argb)
+                if (lastUiState.jerseyB != s.jerseyB) swatch(swatchB, s.jerseyB.argb)
                 quickControls?.isChecked = s.quickScoreControls
                 if (serving.selectedItemPosition != s.serving) serving.setSelection(s.serving)
                 scoreText.text = "A: ${s.teamA}   ${s.scoreA}  —  ${s.scoreB}   B: ${s.teamB}"

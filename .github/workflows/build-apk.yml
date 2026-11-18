@@ -2,7 +2,7 @@ name: Build Live San Dau APK
 
 on:
   push:
-    branches: [main]
+    branches: [build/live-san-dau-1.40.0]
   workflow_dispatch:
 
 permissions:
@@ -37,7 +37,6 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Run unit tests
-        continue-on-error: true
         run: gradle --no-daemon :app:testDebugUnitTest
 
       - name: Collect APK signing tool
@@ -45,12 +44,12 @@ jobs:
           mkdir -p build/signing-tools
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/signing-tools/apksigner.jar
 
-      - name: Upload installable APK
+      - name: Upload APK for local signing
         uses: actions/upload-artifact@v4
         with:
-          name: LiveSanDau-v1.30-no-social-login-debug
+          name: LiveSanDau-v1.40.0-unsigned
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/*.apk
             build/signing-tools/apksigner.jar
           if-no-files-found: error
           retention-days: 14

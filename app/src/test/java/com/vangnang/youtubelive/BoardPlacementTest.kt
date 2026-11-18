@@ -11,11 +11,11 @@ class BoardPlacementTest {
     }
     @Test fun courtStartsAtEightyPercent() { assertEquals(0.8f, football.copy(sport = Sport.PICKLEBALL).placement().scale, 0.001f) }
     @Test fun moveKeepsScale() {
-        val p = football.placement().move(150f, 120f, football.boardBounds())
+        val p = BoardPlacement(32f, 32f, 0.6f).move(150f, 120f, football.boardBounds())
         assertEquals(182f, p.x, 0.001f); assertEquals(152f, p.y, 0.001f); assertEquals(0.6f, p.scale, 0.001f)
     }
     @Test fun resizeKeepsTopLeftWhenSpaceAvailable() {
-        val p = football.placement().resize(1.5f, football.boardBounds())
+        val p = BoardPlacement(32f, 32f, 0.6f).resize(1.5f, football.boardBounds())
         assertEquals(32f, p.x, 0.001f); assertEquals(32f, p.y, 0.001f); assertEquals(0.9f, p.scale, 0.001f)
     }
     @Test fun minimumSizeIsReadableAndNonzero() {
@@ -23,7 +23,7 @@ class BoardPlacementTest {
     }
     @Test fun diagonalCornerDragChangesScaleWithoutDistortingBoard() {
         val b = football.boardBounds()
-        val p = football.placement().resizeByDrag(b.width * 0.4f, b.height * 0.4f, b)
+        val p = BoardPlacement(32f, 32f, 0.6f).resizeByDrag(b.width * 0.4f, b.height * 0.4f, b)
         assertEquals(1f, p.scale, 0.001f); assertEquals(32f, p.x, 0.001f); assertEquals(32f, p.y, 0.001f)
     }
     @Test fun draggingCornerPastOppositeEdgeDoesNotInvertBoard() {

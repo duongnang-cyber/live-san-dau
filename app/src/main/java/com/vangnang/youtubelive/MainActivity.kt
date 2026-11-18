@@ -2,6 +2,8 @@ package com.vangnang.youtubelive
 
 import android.Manifest
 import android.app.ActivityManager
+import android.content.Intent
+import android.widget.EditText
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -29,13 +31,24 @@ import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.library.generic.GenericStream
 import com.pedro.library.util.FpsListener
+import com.facebook.AccessToken
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
 import com.vangnang.youtubelive.databinding.ActivityMainBinding
 import java.util.Locale
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private lateinit var facebookCallbackManager: CallbackManager
     private var stream: GenericStream? = null
+    private var facebookPage: FacebookLive.Page? = null
+    private var facebookBroadcast: FacebookLive.Broadcast? = null
+    private var facebookBusy = false
+    private var facebookRequest = 0
     private var replayEngine: ReplayEngine? = null
     private var generation = 0
     private var prepared = false
@@ -47,7 +60,7 @@ class MainActivity : AppCompatActivity() {
     private var front = false
     private var muted = false
     private var active: StreamConfig? = null
-    private var destination = Destination.YOUTUBE
+    private var destination = Destination.FACEBOOK
     private var cameraFps = 0.0
     private var captureFps = 0.0
     private var sensorState = "Chưa có kết quả cảm biến"
@@ -65,6 +78,24 @@ class MainActivity : AppCompatActivity() {
     private val brandingHandler = Handler(Looper.getMainLooper())
     private val brandingExecutor = Executors.newSingleThreadExecutor()
     private var brandingToken = 0
+    private val builtInSportButtons = linkedMapOf(
+        R.id.setup_football to Sport.FOOTBALL,
+        R.id.setup_volleyball to Sport.VOLLEYBALL,
+        R.id.setup_pickleball to Sport.PICKLEBALL
+    )
+    @Volatile private var replayArtwork = ReplayArtwork()
+    @Volatile private var logoArtwork: android.graphics.Bitmap? = null
+    // Accessed on brandingExecutor only.
+    private val artworkCache = LinkedHashMap<String, android.graphics.Bitmap>()
+    private val customSportButtons = linkedMapOf<Int, SetupSport>()
+    private var loadedCustomSports: List<SetupSport>? = null
+    @Volatile private var remoteLicenseExpires = 0L
+    @Volatile private var remotePaired = false
+    @Volatile private var remoteDialogTitle = "Kết nối taode.online"
+    @Volatile private var remoteDialogMessage = "Nhập mã do admin tạo trên website. Mã ghép nối dùng để đăng ký máy; mã miễn phí quảng cáo dùng sau khi đã ghép nối."
+    @Volatile private var remoteDialogHint = "Mã ghép nối hoặc mã miễn phí quảng cáo"
+    @Volatile private var remoteAboutTitle = "Thông tin ứng dụng"
+    @Volatile private var remoteAboutBody = ""
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (sessionEntered && hasPermissions()) prepare() else if (sessionEntered) {
             status("Cần cấp quyền camera và micro.")
@@ -77,6 +108,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.setupPanel.remoteControl.setOnClickListener { showRemoteControlDialog() }
+        facebookCallbackManager = CallbackManager.Factory.create()
+        LoginManager.getInstance().registerCallback(facebookCallbackManager, object : FacebookCallback<LoginResult> {
+            override fun onSuccess(result: LoginResult) {
+                refreshFacebookAccount()
+                chooseFacebookDestination()
+            }
+
+            override fun onCancel() {
+                refreshFacebookAccount()
+                Toast.makeText(this@MainActivity, "Bạn đã hủy đăng nhập Facebook.", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onError(error: FacebookException) {
+                refreshFacebookAccount()
+                Toast.makeText(this@MainActivity, "Không đăng nhập được Facebook. Kiểm tra mạng và cấu hình ứng dụng Meta.", Toast.LENGTH_LONG).show()
+            }
+        })
         scoreStore = ScoreStore(getSharedPreferences("score_overlay", MODE_PRIVATE))
         scoreState = scoreStore.load().copy(tickerLabel = "")
         sportsLook = SportsLook.fromStored(getSharedPreferences("image_settings", MODE_PRIVATE).getString("sports_look", null))
@@ -184,18 +233,110 @@ class MainActivity : AppCompatActivity() {
         })
         showSetup()
     }
+    private fun applyPublicSetupUi(ui: org.json.JSONObject) {
+        fun text(key: String, fallback: String) = ui.optString(key, fallback).takeIf { it.isNotBlank() } ?: fallback
+        binding.setupPanel.setupTitle.text = text("title", binding.setupPanel.setupTitle.text.toString())
+        binding.setupPanel.setupSubtitle.text = text("subtitle", binding.setupPanel.setupSubtitle.text.toString())
+        binding.setupPanel.setupSportHeading.text = text("sport_heading", binding.setupPanel.setupSportHeading.text.toString())
+        binding.setupPanel.setupDestinationHeading.text = text("destination_heading", binding.setupPanel.setupDestinationHeading.text.toString())
+        binding.setupPanel.enterCamera.text = text("camera_button", binding.setupPanel.enterCamera.text.toString())
+        binding.setupPanel.remoteControl.text = text("remote_button", binding.setupPanel.remoteControl.text.toString())
+        remoteDialogTitle = text("remote_title", remoteDialogTitle)
+        remoteDialogMessage = text("remote_message", remoteDialogMessage)
+        remoteDialogHint = text("remote_hint", remoteDialogHint)
+        val group = binding.setupPanel.setupSport
+        val wasFirstRefresh = loadedCustomSports == null
+        val checked = group.checkedButtonId
+        val preferredCustomId = customSportButtons[checked]?.id ?: scoreState.customSportId?.takeIf {
+            wasFirstRefresh && builtInSportButtons[checked] == scoreState.sport
+        }
+        val sports = ui.optJSONObject("sports")
+        fun sport(id: Int, key: String) {
+            val button = binding.setupPanel.root.findViewById<com.google.android.material.button.MaterialButton>(id)
+            val value = sports?.optJSONObject(key)
+            button.visibility = if (value?.has("visible") == true && !value.optBoolean("visible", true)) View.GONE else View.VISIBLE
+            if (value?.has("text") == true) button.text = value.optString("text", button.text.toString())
+        }
+        sport(R.id.setup_football, "FOOTBALL")
+        sport(R.id.setup_volleyball, "VOLLEYBALL")
+        sport(R.id.setup_pickleball, "PICKLEBALL")
+        val custom = readSetupSports(ui.optJSONArray("custom_sports"))
+        if (loadedCustomSports != custom) {
+            customSportButtons.keys.forEach { id -> group.findViewById<View>(id)?.let { group.removeView(it) } }
+            customSportButtons.clear()
+            for (item in custom) {
+                val button = layoutInflater.inflate(R.layout.setup_custom_sport, group, false) as com.google.android.material.button.MaterialButton
+                button.id = View.generateViewId()
+                button.text = item.title
+                customSportButtons[button.id] = item
+                group.addView(button)
+            }
+            loadedCustomSports = custom
+        }
+        val preferred = customSportButtons.entries.firstOrNull { it.value.id == preferredCustomId }?.key ?: checked
+        selectVisibleSetupSport(preferred)
+        val menus = ui.optJSONObject("menus")
+        fun menu(id: Int, key: String) {
+            val view = binding.setupPanel.root.findViewById<View>(id)
+            if (menus?.has(key) == true) view.visibility = if (menus.optBoolean(key, true)) View.VISIBLE else View.GONE
+        }
+        menu(R.id.setup_facebook, "facebook")
+        menu(R.id.setup_youtube, "youtube")
+        menu(R.id.setup_custom, "custom")
+        menu(R.id.remote_control, "remote")
+        menu(R.id.enter_camera, "camera")
+    }
+
+    private fun refreshDestinationSetup() {
+        val choice = setupDestinationSelection()
+        binding.setupPanel.facebookAccountPanel.visibility = if (choice == Destination.FACEBOOK) View.VISIBLE else View.GONE
+    }
     private fun configureSetup() {
+        binding.setupPanel.setupDestination.addOnButtonCheckedListener { _, _, checked -> if (checked) refreshDestinationSetup() }
+        binding.setupPanel.facebookLogin.setOnClickListener {
+            if (getString(R.string.facebook_client_token).isBlank()) {
+                AlertDialog.Builder(this).setMessage("Bản cài đặt chưa có cấu hình Facebook. Cần bổ sung Client Token trước khi đăng nhập.").setPositiveButton("Đóng", null).show()
+            } else if (facebookAccessToken() != null) {
+                AlertDialog.Builder(this).setItems(arrayOf("Chọn Fanpage hoặc trang cá nhân", "Đăng xuất")) { _, choice ->
+                    if (choice == 0) chooseFacebookDestination() else {
+                        facebookRequest++
+                        facebookPage = null
+                        LoginManager.getInstance().logOut()
+                        refreshFacebookAccount()
+                    }
+                }.show()
+            } else {
+                chooseFacebookDestination()
+            }
+        }
         binding.setupPanel.enterCamera.setOnClickListener { enterCamera() }
+        refreshFacebookAccount()
     }
-    private fun setupSportSelection() = when (binding.setupPanel.setupSport.checkedButtonId) {
-        R.id.setup_volleyball -> Sport.VOLLEYBALL
-        R.id.setup_pickleball -> Sport.PICKLEBALL
-        else -> Sport.FOOTBALL
+    private fun facebookAccessToken(): AccessToken? = AccessToken.getCurrentAccessToken()?.takeUnless { it.isExpired }
+    private fun refreshFacebookAccount() {
+        val connected = facebookAccessToken() != null
+        if (!connected) facebookPage = null
+        binding.setupPanel.facebookAccountStatus.text = if (connected) {
+            facebookPage?.let { "${if (it.isProfile) "Trang cá nhân" else "Fanpage"}: ${it.name}" } ?: "Đã đăng nhập • chọn nơi phát"
+        } else {
+            "Chọn trang cá nhân hoặc Fanpage để đăng nhập"
+        }
+        binding.setupPanel.facebookLogin.text = if (connected) "CHỌN NƠI PHÁT" else "ĐĂNG NHẬP"
     }
+    private fun visibleSetupSport(id: Int): Boolean =
+        binding.setupPanel.setupSport.findViewById<View>(id)?.visibility == View.VISIBLE
+
+    private fun selectVisibleSetupSport(preferred: Int) {
+        val candidates = builtInSportButtons.keys + customSportButtons.keys
+        val id = preferred.takeIf(::visibleSetupSport) ?: candidates.firstOrNull(::visibleSetupSport)
+        id?.let(binding.setupPanel.setupSport::check)
+    }
+
     private fun setupDestinationSelection() = when (binding.setupPanel.setupDestination.checkedButtonId) {
         R.id.setup_facebook -> Destination.FACEBOOK
+        R.id.setup_youtube -> Destination.YOUTUBE
         R.id.setup_custom -> Destination.CUSTOM
-        else -> Destination.YOUTUBE
+        else -> Destination.FACEBOOK
     }
     private fun showSetup() {
         val s = binding.setupPanel
@@ -204,16 +345,15 @@ class MainActivity : AppCompatActivity() {
         dispose()
         scoreState = scoreState.pause(SystemClock.elapsedRealtime())
         scoreStore.save(scoreState, SystemClock.elapsedRealtime())
-        s.setupSport.check(when (scoreState.sport) {
-            Sport.FOOTBALL -> R.id.setup_football
-            Sport.VOLLEYBALL -> R.id.setup_volleyball
-            Sport.PICKLEBALL -> R.id.setup_pickleball
-        })
+        val preferredSport = customSportButtons.entries.firstOrNull { it.value.id == scoreState.customSportId }?.key
+            ?: builtInSportButtons.entries.first { it.value == scoreState.sport }.key
+        selectVisibleSetupSport(preferredSport)
         s.setupDestination.check(when (destination) {
             Destination.YOUTUBE -> R.id.setup_youtube
             Destination.FACEBOOK -> R.id.setup_facebook
             Destination.CUSTOM -> R.id.setup_custom
         })
+        refreshDestinationSetup()
         binding.streamKey.text?.clear()
         binding.controlsPanel.visibility = View.GONE
         binding.videoStage.visibility = View.GONE
@@ -226,6 +366,10 @@ class MainActivity : AppCompatActivity() {
         val s = binding.setupPanel
         // Entering preview needs only sport + destination; credentials are requested inside the session.
         destination = setupDestinationSelection()
+        if (destination == Destination.FACEBOOK && facebookPage == null) {
+            Toast.makeText(this, "Đăng nhập và chọn Fanpage hoặc trang cá nhân trước khi vào camera.", Toast.LENGTH_LONG).show()
+            return
+        }
         val config = quickStartConfig(destination)
         val qualities = sessionQualities(destination)
         spinner(binding.resolution, qualities.map { it.title })
@@ -236,7 +380,10 @@ class MainActivity : AppCompatActivity() {
         binding.streamKey.text?.clear()
         // Undo must not cross into another sport/session after returning to the chooser.
         scoreHistory.clear()
-        scoreState = setupScore(scoreState, setupSportSelection(), false, SystemClock.elapsedRealtime())
+        val selectedButton = s.setupSport.checkedButtonId
+        val customSport = customSportButtons[selectedButton]
+        val profile = customSport?.profile ?: builtInSportButtons[selectedButton] ?: Sport.FOOTBALL
+        scoreState = setupScore(scoreState, profile, false, SystemClock.elapsedRealtime(), customSport)
         scoreStore.save(scoreState, SystemClock.elapsedRealtime())
         configureSessionUi()
         (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(s.root.windowToken, 0)
@@ -252,13 +399,13 @@ class MainActivity : AppCompatActivity() {
         else binding.preview.post { if (sessionEntered && !prepared) prepare() }
     }
     private fun configureSessionUi() {
-        binding.sessionTitle.text = "${scoreState.sport.title} • ${destination.title}"
-        binding.sportSettings.text = "Cài đặt ${scoreState.sport.title}"
+        binding.sessionTitle.text = "${scoreState.sportTitle} • ${destination.title}"
+        binding.sportSettings.text = "Cài đặt ${scoreState.sportTitle}"
         binding.keyInput.hint = sessionKeyLabel(destination)
         binding.serverInput.visibility = if (sessionShowsServer(destination)) View.VISIBLE else View.GONE
-        binding.keyInput.visibility = if (sessionNeedsManualKey(destination)) View.VISIBLE else View.GONE
+        binding.keyInput.visibility = if (destination != Destination.FACEBOOK && sessionNeedsManualKey(destination)) View.VISIBLE else View.GONE
         binding.platformHelp.text = when (destination) {
-            Destination.FACEBOOK -> "Facebook: tối đa 1080p. Dán key của buổi live."
+            Destination.FACEBOOK -> "Phát lên ${if (facebookPage?.isProfile == true) "trang cá nhân" else "Fanpage"} ${facebookPage?.name.orEmpty()}. Bấm LIVE, nhập tiêu đề rồi xác nhận phát."
             Destination.YOUTUBE -> "YouTube: tạo buổi live trên YouTube Studio rồi dán Stream Key."
             Destination.CUSTOM -> "Dán URL máy chủ RTMP/RTMPS và key, không phải link xem video."
         } + "\nKey không được lưu. Giữ ứng dụng mở khi live."
@@ -277,11 +424,14 @@ class MainActivity : AppCompatActivity() {
                 scoreStore.save(scoreState, SystemClock.elapsedRealtime())
                 refreshQuickScores()
             }
+        }, {
+            // The website controls the event label for devices without an active license.
+            remoteLicenseExpires > (System.currentTimeMillis() / 1000L)
         }).also { it.show() }
     }
     private fun showCompactMenu() {
         PopupMenu(this, binding.menuToggle).apply {
-            menu.add(0, 1, 0, "${scoreState.sport.title} • Tỉ số / chữ chạy")
+            menu.add(0, 1, 0, "${scoreState.sportTitle} • Tỉ số / chữ chạy")
             menu.add(0, 2, 1, "Kéo / phóng bảng tỉ số")
                 .isEnabled = replayEngine?.busy != true
             menu.add(0, 13, 2, "Kéo / phóng chữ chạy").isEnabled = replayEngine?.busy != true
@@ -370,7 +520,7 @@ class MainActivity : AppCompatActivity() {
                 val paths = if (index == 0) listOf("about.txt") else listOf(
                     "licenses/THIRD_PARTY.txt", "licenses/Apache-2.0.txt",
                     "licenses/SLF4J-MIT.txt", "licenses/RUNTIME_NOTICES.txt")
-                val body = paths.joinToString("\n\n") { path ->
+                val body = if (index == 0 && remoteAboutBody.isNotBlank()) remoteAboutBody else paths.joinToString("\n\n") { path ->
                     runCatching { assets.open(path).bufferedReader().use { it.readText() } }
                         .getOrElse { "Không mở được $path. Xem gói mã nguồn đi kèm." }
                 }
@@ -379,7 +529,7 @@ class MainActivity : AppCompatActivity() {
                     val inset = (20 * resources.displayMetrics.density).toInt()
                     setPadding(inset, inset, inset, inset); setTextIsSelectable(true)
                 }
-                AlertDialog.Builder(this).setTitle(if (index == 0) "Thông tin ứng dụng" else "Giấy phép nguồn mở")
+                AlertDialog.Builder(this).setTitle(if (index == 0) remoteAboutTitle else "Giấy phép nguồn mở")
                     .setView(android.widget.ScrollView(this).apply { addView(view) })
                     .setPositiveButton("Đóng", null).show()
             }.show()
@@ -564,26 +714,122 @@ class MainActivity : AppCompatActivity() {
         spinner(binding.fps, fpsChoices.map { "$it FPS" })
         binding.fps.setSelection(fpsChoices.indexOf(previous).takeIf { it >= 0 } ?: fpsChoices.indexOf(30).coerceAtLeast(0))
     }
+    private fun showRemoteControlDialog() {
+        val input = EditText(this).apply { hint = remoteDialogHint; setSingleLine(true) }
+        AlertDialog.Builder(this).setTitle(remoteDialogTitle).setMessage(remoteDialogMessage).setView(input)
+            .setNegativeButton("Hủy", null).setPositiveButton("Xác nhận") { _, _ ->
+                val code = input.text.toString().trim()
+                if (code.isBlank()) return@setPositiveButton
+                brandingExecutor.execute {
+                    val result = runCatching { if (RemoteBrandingClient.paired(this)) RemoteBrandingClient.activate(this, code) else RemoteBrandingClient.pair(this, code, "Android ${android.os.Build.MODEL}") }.getOrNull()
+                    runOnUiThread {
+                        remotePaired = result != null
+                        Toast.makeText(this, if (result != null) "Đã kết nối website" else "Mã sai hoặc đã hết hạn", Toast.LENGTH_LONG).show()
+                        if (result != null) startRemoteBranding()
+                    }
+                }
+            }.show()
+    }
     private fun startRemoteBranding() {
+        remotePaired = RemoteBrandingClient.paired(this)
         val token = ++brandingToken
         fetchRemoteBranding(token)
     }
+    private fun loadRemoteArtwork(asset: String): android.graphics.Bitmap? {
+        if (asset.isBlank()) return null
+        artworkCache[asset]?.let { return it }
+        val image = runCatching { RemoteBrandingClient.fetchAsset(this, asset) }.getOrNull() ?: return null
+        artworkCache[asset] = image
+        if (artworkCache.size > 4) artworkCache.remove(artworkCache.keys.first())
+        return image
+    }
+
     private fun fetchRemoteBranding(token: Int) {
         brandingExecutor.execute {
-            val branding = runCatching { RemoteBrandingClient.fetch() }.getOrNull()
+            val branding = runCatching { RemoteBrandingClient.fetch(this@MainActivity) }.getOrNull()
+            val public = if (branding?.ui == null) {
+                runCatching { RemoteBrandingClient.fetchPublicUi(this@MainActivity) }.getOrNull()
+            } else null
+            val logoAsset = branding?.logo?.optString("asset").orEmpty()
+            val logo = if (branding?.enabled == true) loadRemoteArtwork(logoAsset) else null
+            val replay = branding?.replay
+            val artwork = replay?.let {
+                val asset = if (it.optBoolean("show_asset", false)) loadRemoteArtwork(it.optString("asset")) else null
+                ReplayArtwork(it.optString("label", "PHÁT LẠI").take(80), it.optBoolean("show_label", true), asset)
+            } ?: ReplayArtwork()
             runOnUiThread {
                 if (token != brandingToken || isDestroyed) return@runOnUiThread
+                (branding?.ui ?: public?.optJSONObject("ui"))?.let(::applyPublicSetupUi)
+                public?.optJSONObject("about")?.let { about ->
+                    remoteAboutTitle = about.optString("title").takeIf { it.isNotBlank() }?.take(160) ?: remoteAboutTitle
+                    remoteAboutBody = about.optString("body").takeIf { it.isNotBlank() }?.take(6000) ?: remoteAboutBody
+                }
                 branding?.let {
+                    replayArtwork = artwork
+                    logoArtwork = logo
+                    remoteLicenseExpires = it.licenseExpires
+                    it.about?.let { about ->
+                        remoteAboutTitle = about.optString("title", remoteAboutTitle).take(160)
+                        remoteAboutBody = about.optString("body", remoteAboutBody).take(6000)
+                    }
                     val label = if (it.enabled) it.label else ""
+                    val logoConfig = it.logo
+                    val logoText = if (it.enabled) logoConfig?.optString("text", "").orEmpty().take(80) else ""
+                    scoreState = scoreState.copy(
+                        logoVisible = logo != null || logoText.isNotBlank(),
+                        logoText = logoText,
+                        logoX = logoConfig?.optDouble("x", 1050.0)?.toFloat()?.coerceIn(0f, 1200f) ?: 1050f,
+                        logoY = logoConfig?.optDouble("y", 35.0)?.toFloat()?.coerceIn(0f, 680f) ?: 35f,
+                        logoWidth = logoConfig?.optDouble("width", 180.0)?.toFloat()?.coerceIn(40f, 500f) ?: 180f,
+                        logoOpacity = logoConfig?.optDouble("opacity", 0.8)?.toFloat()?.coerceIn(0f, 1f) ?: 0.8f
+                    )
+                    it.replay?.let { replay ->
+                        val seconds = replay.optInt("seconds", 5).takeIf { v -> v in listOf(3, 5, 8) } ?: 5
+                        val speed = replay.optDouble("speed", 0.5).takeIf { v -> v == 0.5 || v == 0.25 } ?: 0.5
+                        val transition = replay.optString("transition", "SPORTS").takeIf { v -> ReplayTransition.entries.any { it.name == v } } ?: "SPORTS"
+                        getSharedPreferences("replay_settings", MODE_PRIVATE).edit()
+                            .putInt("seconds", seconds).putFloat("speed", speed.toFloat()).putString("transition", transition).apply()
+                        if (!live) {
+                            binding.replayDuration.setSelection(listOf(3, 5, 8).indexOf(seconds))
+                            binding.replaySpeed.setSelection(if (speed == 0.5) 0 else 1)
+                            binding.replayTransition.setSelection(ReplayTransition.entries.indexOfFirst { it.name == transition }.coerceAtLeast(0))
+                            updateReplaySummary(ReplaySettings.safe(seconds, speed, transition))
+                        }
+                    }
+                    val match = it.match
+                    if (match != null) {
+                        val licensed = it.licenseExpires > (System.currentTimeMillis() / 1000L)
+                        val fixedEvent = if (licensed) match.optString("event", scoreState.event) else "TRỰC TIẾP THỂ THAO"
+                        val remoteClock = match.optInt("clockSeconds", -1).coerceIn(-1, 59_999)
+                        val remoteRunning = match.optBoolean("clockRunning", false)
+                        scoreState = scoreState.copy(
+                            teamA = match.optString("teamA", scoreState.teamA).take(40),
+                            teamB = match.optString("teamB", scoreState.teamB).take(40),
+                            event = fixedEvent.take(80),
+                            period = match.optString("period", scoreState.period).take(30),
+                            scoreA = match.optInt("scoreA", scoreState.scoreA).coerceIn(0, 999),
+                            scoreB = match.optInt("scoreB", scoreState.scoreB).coerceIn(0, 999),
+                            setsA = match.optInt("setsA", scoreState.setsA).coerceIn(0, 99),
+                            setsB = match.optInt("setsB", scoreState.setsB).coerceIn(0, 99),
+                            elapsedMs = if (remoteClock >= 0) remoteClock * 1000L else scoreState.elapsedMs,
+                            runningSince = if (remoteClock >= 0 && remoteRunning) SystemClock.elapsedRealtime() else if (remoteClock >= 0) null else scoreState.runningSince,
+                            tickerText = match.optString("tickerText", scoreState.tickerText).take(500),
+                            tickerVisible = match.optBoolean("tickerVisible", scoreState.tickerVisible)
+                        )
+                    } else if (it.licenseExpires <= (System.currentTimeMillis() / 1000L) && scoreState.event != "TRỰC TIẾP THỂ THAO") {
+                        scoreState = scoreState.copy(event = "TRỰC TIẾP THỂ THAO")
+                    }
                     if (scoreState.tickerLabel != label) scoreState = scoreState.copy(tickerLabel = label)
                 }
-                brandingHandler.postDelayed({ fetchRemoteBranding(token) }, 60_000)
+                // Website promises propagation in about ten seconds.
+                brandingHandler.postDelayed({ fetchRemoteBranding(token) }, 10_000)
             }
         }
     }
     private fun stopRemoteBranding() {
         brandingToken++
         brandingHandler.removeCallbacksAndMessages(null)
+        remoteLicenseExpires = 0L
         if (scoreState.tickerLabel.isNotEmpty()) scoreState = scoreState.copy(tickerLabel = "")
     }
     private fun serverFor(value: Destination) = getPreferences(MODE_PRIVATE).getString("server_${value.name}", value.defaultUrl).orEmpty()
@@ -671,8 +917,8 @@ class MainActivity : AppCompatActivity() {
             // Default RenderMode.ALL burns overlays into both preview and encoded stream.
             // Treat camera first: graphics stay untouched; replay retains its recorded appearance.
             current.getGlInterface().addFilter(SportsLookFilter({ sportsLook }, camera::observeLatchedFrame))
-            current.getGlInterface().addFilter(ScoreOverlayFilter { scoreState })
-            current.getGlInterface().addFilter(ReplayFilter(replay))
+            current.getGlInterface().addFilter(ScoreOverlayFilter({ scoreState }, { logoArtwork }))
+            current.getGlInterface().addFilter(ReplayFilter(replay) { replayArtwork })
             active = config; activeSupport = support; prepared = true; front = plan.targetFront
             startWhenCameraReady = autoStartWhenReady
             binding.switchCamera.text = if (front) "Camera: trước" else "Camera: sau"
@@ -719,6 +965,10 @@ class MainActivity : AppCompatActivity() {
         return false
     }
     private fun startLive() {
+        if (destination == Destination.FACEBOOK) {
+            startFacebookLive()
+            return
+        }
         val url = try { buildStreamUrl(binding.serverUrl.text.toString(), binding.streamKey.text.toString()) }
         catch (error: IllegalArgumentException) { status(error.message ?: "Kiểm tra URL và key."); binding.controlsPanel.visibility = View.VISIBLE; return }
         if ((!prepared || active != selected()) && !prepare()) return
@@ -732,6 +982,132 @@ class MainActivity : AppCompatActivity() {
         binding.controlsPanel.visibility = View.GONE
         status("Đang kết nối ${destination.title}…")
         try { stream?.startStream(url) } catch (_: Exception) { dispose(); status("Không thể kết nối. Kiểm tra Server URL, key và mạng.") }
+    }
+    private fun launchFacebookLogin(target: String) {
+        startActivityForResult(Intent(this, FacebookLoginActivity::class.java).putExtra("login_target", target), FacebookLoginActivity.REQUEST_CODE)
+    }
+    private fun chooseFacebookDestination() {
+        AlertDialog.Builder(this).setTitle("Chọn nơi phát Facebook")
+            .setItems(arrayOf("Trang cá nhân của tôi", "Fanpage tôi quản lý")) { _, index ->
+                if (facebookAccessToken() == null) launchFacebookLogin(if (index == 0) "profile" else "page")
+                else if (index == 0) chooseFacebookProfile() else chooseFacebookPage()
+            }.setNegativeButton("Hủy", null).show()
+    }
+    private fun chooseFacebookProfile() {
+        val token = facebookAccessToken() ?: return
+        val request = ++facebookRequest
+        facebookPage = null
+        binding.setupPanel.facebookAccountStatus.text = "Đang kiểm tra quyền trang cá nhân…"
+        FacebookLive.checkPermissions(token) { states, error ->
+            if (isDestroyed || isFinishing || request != facebookRequest || facebookAccessToken() != token) return@checkPermissions
+            if (states == null || error != null) {
+                refreshFacebookAccount()
+                AlertDialog.Builder(this).setMessage(error ?: "Chưa kiểm tra được quyền.")
+                    .setPositiveButton("Thử lại") { _, _ -> chooseFacebookProfile() }.setNegativeButton("Đóng", null).show()
+            } else if (FacebookPermissionState.missing(states, true).isNotEmpty()) {
+                refreshFacebookAccount()
+                AlertDialog.Builder(this).setTitle("Cần quyền phát trang cá nhân")
+                    .setMessage("Cần quyền publish_video. Nếu Meta báo Invalid Scopes, vào ứng dụng Meta → Trường hợp sử dụng → Truy cập API Video trực tiếp → Quyền và tính năng để kiểm tra publish_video. APK không thể tự cấp quyền thay Meta. Sau khi cấu hình, bấm Cấp quyền và hoàn tất xác nhận Facebook.")
+                    .setPositiveButton("Cấp quyền") { _, _ -> launchFacebookLogin("profile") }.setNegativeButton("Đóng", null).show()
+            } else FacebookLive.profile(token) { profile, profileError ->
+                if (isDestroyed || request != facebookRequest || facebookAccessToken() != token) return@profile
+                facebookPage = profile
+                refreshFacebookAccount()
+                if (profile == null) AlertDialog.Builder(this).setMessage(profileError ?: "Không đọc được tài khoản.").setPositiveButton("Đóng", null).show()
+            }
+        }
+    }
+    private fun chooseFacebookPage() {
+        val token = facebookAccessToken() ?: return
+        val request = ++facebookRequest
+        facebookPage = null
+        binding.setupPanel.facebookAccountStatus.text = "Đang kiểm tra quyền Facebook…"
+        FacebookLive.checkPermissions(token) { states, error ->
+            if (isDestroyed || isFinishing || request != facebookRequest || facebookAccessToken() != token) return@checkPermissions
+            if (error != null || states == null) {
+                refreshFacebookAccount()
+                AlertDialog.Builder(this).setTitle("Chưa kiểm tra được quyền")
+                    .setMessage(error ?: "Facebook chưa trả kết quả.")
+                    .setPositiveButton("Thử lại") { _, _ -> chooseFacebookPage() }
+                    .setNegativeButton("Đóng", null).show()
+                return@checkPermissions
+            }
+            val missing = FacebookPermissionState.missing(states)
+            if (missing.isNotEmpty()) {
+                refreshFacebookAccount()
+                val detail = FacebookLive.pagePermissions.joinToString("\n") {
+                    "$it: " + when (states[it]) {
+                        "granted" -> "Đã cấp"
+                        "declined" -> "Đã từ chối"
+                        "expired" -> "Đã hết hạn"
+                        else -> "Chưa được cấp"
+                    }
+                }
+                AlertDialog.Builder(this).setTitle("Cần cấp thêm quyền Trang")
+                    .setMessage("Facebook trả về:\n\n$detail\n\nBấm Cấp lại quyền, chọn Fanpage và lưu để hoàn tất.")
+                    .setPositiveButton("Cấp lại quyền") { _, _ ->
+                        launchFacebookLogin("page")
+                    }.setNegativeButton("Đóng", null).show()
+            } else loadFacebookPages(token, request)
+        }
+    }
+    private fun loadFacebookPages(token: AccessToken, request: Int) {
+        binding.setupPanel.facebookAccountStatus.text = "Đang tải danh sách Fanpage…"
+        FacebookLive.pages(token) { pages, error ->
+            if (isDestroyed || request != facebookRequest) return@pages
+            if (error != null || pages.isEmpty()) {
+                refreshFacebookAccount()
+                AlertDialog.Builder(this).setMessage(error ?: "Không có Fanpage được cấp quyền. Kiểm tra quyền quản lý và cấp quyền Trang trên Facebook.").setPositiveButton("Đóng", null).show()
+            } else {
+                AlertDialog.Builder(this).setTitle("Chọn Fanpage phát live")
+                    .setItems(pages.map { it.name }.toTypedArray()) { _, index ->
+                        facebookPage = pages[index]
+                        refreshFacebookAccount()
+                    }.setNegativeButton("Hủy", null).show()
+            }
+        }
+    }
+    private fun startFacebookLive() {
+        if (facebookBusy || live) return
+        val page = facebookPage ?: run { status("Quay về màn hình đầu để chọn nơi phát Facebook."); return }
+        if ((!prepared || active != selected()) && !prepare()) return
+        if (!cameraReady) { status("Camera đang chuẩn bị. Hãy bấm LIVE khi có hình."); return }
+        val title = EditText(this).apply { hint = "Tiêu đề buổi live"; setText("Trực tiếp ${scoreState.sportTitle}") }
+        val form = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(24, 8, 24, 8); addView(title)
+        }
+        val privacy = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(this@MainActivity, R.layout.spinner_item,
+                listOf("Chỉ mình tôi (thử nghiệm)", "Bạn bè", "Công khai")).apply { setDropDownViewResource(R.layout.spinner_dropdown_item) }
+        }
+        if (page.isProfile) {
+            form.addView(android.widget.TextView(this).apply { text = "Ai được xem? Meta có thể giới hạn đối tượng theo cấu hình ứng dụng." })
+            form.addView(privacy)
+        }
+        AlertDialog.Builder(this).setTitle("Phát lên ${if (page.isProfile) "trang cá nhân" else "Fanpage"}: ${page.name}").setView(form)
+            .setNegativeButton("Hủy", null)
+            .setPositiveButton("PHÁT LIVE") { _, _ ->
+                if (facebookBusy || live || !foreground || !cameraReady) return@setPositiveButton
+                val name = title.text.toString().trim()
+                if (name.isEmpty()) { status("Cần nhập tiêu đề buổi live."); return@setPositiveButton }
+                facebookBusy = true
+                val request = ++facebookRequest
+                status("Đang tạo phiên live trên ${page.name}…")
+                FacebookLive.create(page, name, FacebookPermissionState.privacyValue(privacy.selectedItemPosition)) { broadcast, error ->
+                    if (isDestroyed || request != facebookRequest || !foreground || !sessionEntered) {
+                        broadcast?.let { FacebookLive.end(it) {} }
+                        return@create
+                    }
+                    facebookBusy = false
+                    if (broadcast == null) { status(error ?: "Không tạo được phiên Facebook Live."); return@create }
+                    facebookBroadcast = broadcast
+                    setLive(true)
+                    binding.controlsPanel.visibility = View.GONE
+                    try { stream?.startStream(broadcast.url) ?: throw IllegalStateException() }
+                    catch (_: Exception) { dispose(); status("Không gửi được hình lên Facebook. Hãy thử lại.") }
+                }
+            }.show()
     }
     private fun stopLive() { dispose(); prepare(); status("Đã dừng phát.") }
     private fun applyMute() {
@@ -760,18 +1136,26 @@ class MainActivity : AppCompatActivity() {
     private fun ui(token: Int, action: () -> Unit) = runOnUiThread { if (token == generation && !isDestroyed) action() }
     private fun checker(token: Int) = object : ConnectChecker {
         override fun onConnectionStarted(url: String) { ui(token) { status("Đang kết nối ${destination.title}…") } }
-        override fun onConnectionSuccess() { ui(token) { status("● ĐANG GỬI LUỒNG • ${destination.title}\nKiểm tra trang quản lý live để lên sóng.", true) } }
+        override fun onConnectionSuccess() { ui(token) { status(if (destination == Destination.FACEBOOK) "● ĐANG GỬI LUỒNG • ${facebookPage?.name ?: "Facebook"}\nMở Facebook để kiểm tra hình và tiếng." else "● ĐANG GỬI LUỒNG • ${destination.title}\nKiểm tra trang quản lý live để lên sóng.", true) } }
         override fun onConnectionFailed(reason: String) { ui(token) {
             val current = stream
             if (live && current != null && current.getStreamClient().reTry(3000, reason, null)) status("Đang thử kết nối lại…")
-            else { dispose(); status("Kết nối thất bại. Kiểm tra mạng, Server URL và key còn hiệu lực.") }
+            else { dispose(); status(if (destination == Destination.FACEBOOK) "Không kết nối được Facebook. Kiểm tra mạng rồi thử tạo lại phiên live." else "Kết nối thất bại. Kiểm tra mạng, Server URL và key còn hiệu lực.") }
         } }
         override fun onNewBitrate(bitrate: Long) { ui(token) { binding.bitrate.text = String.format(Locale.getDefault(), "Đang gửi: %.2f Mb/s", bitrate / 1_000_000.0) } }
         override fun onDisconnect() { ui(token) { dispose(); status("Đã ngắt kết nối. Bấm BẮT ĐẦU PHÁT để thử lại.") } }
-        override fun onAuthError() { ui(token) { dispose(); status("Không xác thực được. Lấy lại Stream Key trên nền tảng.") } }
+        override fun onAuthError() { ui(token) { dispose(); status(if (destination == Destination.FACEBOOK) "Facebook từ chối luồng phát. Đăng nhập lại và kiểm tra quyền nơi phát." else "Không xác thực được. Lấy lại Stream Key trên nền tảng.") } }
         override fun onAuthSuccess() = Unit
     }
     private fun dispose() {
+        facebookRequest++
+        facebookBusy = false
+        facebookBroadcast?.let { broadcast ->
+            facebookBroadcast = null
+            FacebookLive.end(broadcast) { error ->
+                if (error != null && !isDestroyed) Toast.makeText(this, "Chưa xác nhận kết thúc live. Kiểm tra Fanpage trên Facebook.", Toast.LENGTH_LONG).show()
+            }
+        }
         generation++
         replayEngine?.close(); replayEngine = null
         val previous = stream
@@ -786,7 +1170,27 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onResume() {
         super.onResume(); foreground = true; startRemoteBranding()
+        refreshFacebookAccount()
         if (sessionEntered && !live && !prepared && hasPermissions()) binding.preview.post { if (foreground && sessionEntered && !prepared) prepare() }
+    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == FacebookLoginActivity.REQUEST_CODE) {
+            refreshFacebookAccount()
+            if (resultCode == RESULT_OK) {
+                when (data?.getStringExtra("login_target")) {
+                    "page" -> chooseFacebookPage()
+                    "profile" -> chooseFacebookProfile()
+                    else -> chooseFacebookDestination()
+                }
+            } else {
+                Toast.makeText(this, if (data?.getBooleanExtra("login_error", false) == true)
+                    "Không đăng nhập được Facebook. Kiểm tra mạng và cấu hình ứng dụng Meta."
+                    else "Bạn đã hủy đăng nhập Facebook.", Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+        facebookCallbackManager.onActivityResult(requestCode, resultCode, data)
     }
     override fun onPause() {
         foreground = false

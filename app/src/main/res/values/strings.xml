@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Live Sân Đấu</string>
+    <string name="facebook_app_id" translatable="false">1080265937925580</string>
+    <string name="fb_login_protocol_scheme" translatable="false">fb1080265937925580</string>
+</resources>

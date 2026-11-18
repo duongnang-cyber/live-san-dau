@@ -55,7 +55,7 @@ object BroadcastDesign {
             s.sport == Sport.PICKLEBALL -> pickleballPro(scene, s, now)
             else -> courtPro(scene, s, now)
         }
-        return applyOverlayColors(scene.marks, s.boardColors)
+        return applyOverlayColors(scene.marks, s.boardColors) + jerseyMarks(s)
     }
     private fun footballPro(d: Scene, s: ScoreState, now: Long) = with(d) {
         val style = s.boardStyle()
@@ -111,9 +111,10 @@ object BroadcastDesign {
             }
         }
         // Team — score — score — team: both numbers are inside and close together.
-        val teamAX = if (style == BoardStyle.ARENA) 181 else 180
-        val teamBX = if (style == BoardStyle.ARENA) 639 else 640
-        val teamWidth = if (style == BoardStyle.ARENA) 252 else 248
+        val kitInset = if (s.jerseyBar == JerseyBar.VERTICAL) 14 else 0
+        val teamAX = kitInset + if (style == BoardStyle.ARENA) 181 else 180
+        val teamBX = kitInset + if (style == BoardStyle.ARENA) 639 else 640
+        val teamWidth = if (kitInset > 0) 216 else if (style == BoardStyle.ARENA) 252 else 248
         text(upper(s.teamA), teamAX, 91, 26, teamWidth, teamInk, true, 16)
         text(upper(s.teamB), teamBX, 91, 26, teamWidth, teamInk, true, 16)
         val scoreInk = if (style == BoardStyle.CHAMPION) black else white
@@ -255,11 +256,11 @@ object BroadcastDesign {
         panel(160, 178, 960, 316, Ink(0xF5101B28.toInt()), 24)
         panel(184, 202, 6, 266, Ink(0xFF9DDCCD.toInt()), 3)
         text(upper(s.breakTitle), 640, 236, 32, 846, center = true, minimum = 20)
-        text("${upper(s.sport.title)}  •  ${upper(s.period)}", 640, 271, 16, 850, cyan, center = true)
+        text("${upper(s.sportTitle)}  •  ${upper(s.period)}", 640, 271, 16, 850, cyan, center = true)
         panel(210, 296, 272, 102, Ink(0xFF1D3041.toInt()), 12)
         panel(798, 296, 272, 102, Ink(0xFF1D3041.toInt()), 12)
-        text(upper(s.teamA), 346, 357, 29, 244, center = true, minimum = 18)
-        text(upper(s.teamB), 934, 357, 29, 244, center = true, minimum = 18)
+        text(upper(s.teamA), if (s.sport == Sport.FOOTBALL && s.jerseyBar == JerseyBar.VERTICAL) 358 else 346, 357, 29, if (s.sport == Sport.FOOTBALL && s.jerseyBar == JerseyBar.VERTICAL) 218 else 244, center = true, minimum = 18)
+        text(upper(s.teamB), if (s.sport == Sport.FOOTBALL && s.jerseyBar == JerseyBar.VERTICAL) 946 else 934, 357, 29, if (s.sport == Sport.FOOTBALL && s.jerseyBar == JerseyBar.VERTICAL) 218 else 244, center = true, minimum = 18)
         panel(500, 296, 280, 102, Ink(0xFF006B5F.toInt()), 18)
         text("${s.scoreA} : ${s.scoreB}", 640, 369, 70, 256, gold, true, 40, true)
         val summary = if (s.sport == Sport.FOOTBALL) "THỜI GIAN THI ĐẤU  ${s.clock(now)}"

@@ -81,12 +81,11 @@ class SessionUiTest {
         assertFalse(shader.contains("0.922222"))
         assertTrue(shader.contains("texture2D(uTicker, topUV)"))
     }
-    @Test fun remoteOwnerBadgeDefaultsOffAndShipsNoWriteCredential() {
-        val config = File("../remote-branding.json").readText()
+    @Test fun remoteControlUsesWebsiteAndShipsNoAdminCredential() {
         val client = File("src/main/java/com/vangnang/youtubelive/RemoteBranding.kt").readText()
-        assertTrue(config.contains("\"enabled\": false"))
-        assertTrue(config.contains("\"label\": \"\""))
-        assertTrue(client.contains("raw.githubusercontent.com/duongnang-cyber/live-san-dau/main/remote-branding.json"))
-        assertFalse(client.contains("Authorization"))
+        assertTrue(client.contains("https://taode.online/api/live/v1"))
+        assertTrue(client.contains("Authorization"))
+        assertFalse(client.contains("admin_token"))
+        assertFalse(client.contains("raw.githubusercontent.com/duongnang-cyber/live-san-dau"))
     }
 }

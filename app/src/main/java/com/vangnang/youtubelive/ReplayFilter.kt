@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PorterDuff
+import android.graphics.RectF
 import android.graphics.SurfaceTexture
 import android.graphics.Typeface
 import android.opengl.GLES11Ext
@@ -20,7 +21,7 @@ import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Applied AFTER the score overlay: replay already contains the historical board/ticker. */
-class ReplayFilter(private val replay: ReplayEngine) : BaseFilterRender() {
+class ReplayFilter(private val replay: ReplayEngine, private val artwork: () -> ReplayArtwork) : BaseFilterRender() {
     private val vertices = ByteBuffer.allocateDirect(64).order(ByteOrder.nativeOrder()).asFloatBuffer().apply {
         put(floatArrayOf(-1f,-1f,0f,0f, 1f,-1f,1f,0f, -1f,1f,0f,1f, 1f,1f,1f,1f)); position(0)
     }
@@ -30,6 +31,7 @@ class ReplayFilter(private val replay: ReplayEngine) : BaseFilterRender() {
     private var surfaceTexture: SurfaceTexture? = null
     private var surface: Surface? = null
     private var badge: Bitmap? = null
+    private var lastArtwork: ReplayArtwork? = null
     private var transitionGraphic: Bitmap? = null
     private var program = 0
     private var pos = -1
@@ -67,11 +69,13 @@ class ReplayFilter(private val replay: ReplayEngine) : BaseFilterRender() {
             it.setOnFrameAvailableListener { available.set(true) }
         }
         surface = Surface(surfaceTexture!!)
-        badge = Bitmap.createBitmap(200, 48, Bitmap.Config.ARGB_8888)
+        badge = Bitmap.createBitmap(400, 96, Bitmap.Config.ARGB_8888)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE2)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[1])
         textureParams(GLES20.GL_TEXTURE_2D)
-        drawBadge()
+        val initialArtwork = artwork()
+        drawBadge(initialArtwork)
+        lastArtwork = initialArtwork
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, badge!!, 0)
         transitionGraphic = Bitmap.createBitmap(1280, 720, Bitmap.Config.ARGB_8888)
         drawTransitionGraphic()
@@ -88,15 +92,36 @@ class ReplayFilter(private val replay: ReplayEngine) : BaseFilterRender() {
         GLES20.glTexParameteri(target, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glTexParameteri(target, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
     }
-    private fun drawBadge() {
+    private fun drawBadge(art: ReplayArtwork) {
         val canvas = Canvas(badge!!)
+        canvas.scale(2f, 2f)
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xF0101B28.toInt() }
-        canvas.drawRoundRect(0f, 0f, 200f, 48f, 4f, 4f, paint)
-        paint.color = 0xFF9DDCCD.toInt(); canvas.drawRect(0f, 0f, 5f, 48f, paint)
-        paint.color = Color.WHITE; paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        paint.textSize = 24f; paint.textAlign = Paint.Align.CENTER
-        canvas.drawText("PHÁT LẠI", 104f, 32f, paint)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        val image = art.image
+        if (image != null) {
+            val leftWidth = if (art.showLabel) 80f else 200f
+            val scale = minOf(leftWidth / image.width, 48f / image.height)
+            val w = image.width * scale
+            val h = image.height * scale
+            val x = (leftWidth - w) / 2f
+            val y = (48f - h) / 2f
+            canvas.drawBitmap(image, null, RectF(x, y, x + w, y + h), paint)
+        }
+        if (!art.showLabel || art.label.isBlank()) return
+        val left = if (image == null) 0f else 82f
+        paint.color = 0xF0101B28.toInt()
+        canvas.drawRoundRect(left, 0f, 200f, 48f, 4f, 4f, paint)
+        paint.color = 0xFF9DDCCD.toInt()
+        canvas.drawRect(left, 0f, left + 5f, 48f, paint)
+        paint.color = Color.WHITE
+        paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
+        paint.textAlign = Paint.Align.CENTER
+        val fitted = fitBroadcastText(art.label, 24f, 10f, 185f - left) { text, size ->
+            paint.textSize = size
+            paint.measureText(text)
+        }
+        paint.textSize = fitted.size
+        canvas.drawText(fitted.text, (left + 200f) / 2f + 3f, 24f - (paint.ascent() + paint.descent()) / 2f, paint)
     }
     /** Original court-line artwork, rendered offline from the shared vector scene. */
     private fun drawTransitionGraphic() {
@@ -120,6 +145,12 @@ class ReplayFilter(private val replay: ReplayEngine) : BaseFilterRender() {
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0); GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, previousTexId); GLES20.glUniform1i(videoUniform, 0)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE1); GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]); GLES20.glUniform1i(replayUniform, 1)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE2); GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[1]); GLES20.glUniform1i(labelUniform, 2)
+        val nextArtwork = artwork()
+        if (lastArtwork != nextArtwork) {
+            drawBadge(nextArtwork)
+            GLUtils.texSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, badge!!)
+            lastArtwork = nextArtwork
+        }
         GLES20.glActiveTexture(GLES20.GL_TEXTURE3); GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[2]); GLES20.glUniform1i(transitionUniform, 3)
     }
     override fun disableResources() {
